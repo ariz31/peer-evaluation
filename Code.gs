@@ -97,16 +97,17 @@ function changeFacultyPin(currentPin, newPin) {
 function saveRegistration(formObject) {
   ensureSetup();
 
+  const payload = formObject || {};
   let registration;
   try {
     registration = {
-      activityKey: normalizeCode_(formObject.activityKey, 'Activity'),
-      classId: normalizeCode_(formObject.classId, 'Class ID'),
-      groupKey: normalizeCode_(formObject.groupKey, 'Group Key'),
-      studentId: normalizeStudentId_(formObject.studentId),
-      name: cleanText_(formObject.name, 120),
-      role: cleanText_(formObject.role, 120),
-      contribution: cleanText_(formObject.contribution, 1500)
+      activityKey: normalizeCode_(payload.activityKey, 'Activity'),
+      classId: normalizeCode_(payload.classId, 'Class ID'),
+      groupKey: normalizeCode_(payload.groupKey, 'Group Key'),
+      studentId: normalizeStudentId_(payload.studentId),
+      name: cleanText_(payload.name, 120),
+      role: cleanText_(payload.role, 120),
+      contribution: cleanText_(payload.contribution, 1500)
     };
   } catch (error) {
     return fail_(error.message);
@@ -226,19 +227,20 @@ function verifyAndLoadGroup(studentId, activityKey, classId) {
 function saveEvaluation(evalData) {
   ensureSetup();
 
+  const payload = evalData || {};
   let activityKey;
   let classId;
   try {
-    activityKey = normalizeCode_(evalData.activityKey, 'Activity');
-    classId = normalizeCode_(evalData.classId, 'Class ID');
+    activityKey = normalizeCode_(payload.activityKey, 'Activity');
+    classId = normalizeCode_(payload.classId, 'Class ID');
   } catch (error) {
     return fail_(error.message);
   }
 
-  const evaluatorStudentId = normalizeStudentId_(evalData.evaluatorStudentId);
-  const targetStudentId = normalizeStudentId_(evalData.targetStudentId);
-  const comments = cleanText_(evalData.comments || '', 1200);
-  const scores = parseScores_(evalData.scores || evalData);
+  const evaluatorStudentId = normalizeStudentId_(payload.evaluatorStudentId);
+  const targetStudentId = normalizeStudentId_(payload.targetStudentId);
+  const comments = cleanText_(payload.comments || '', 1200);
+  const scores = parseScores_(payload.scores || payload);
 
   if (!evaluatorStudentId) return fail_('Missing evaluator Student ID. Please verify again.');
   if (!targetStudentId) return fail_('Please select a team member to evaluate.');
@@ -335,13 +337,14 @@ function generateReportData(filters, providedPin) {
   ensureSetup();
   if (String(providedPin || '') !== getFacultyPin_()) return fail_('Access denied. Incorrect Faculty PIN.');
 
+  const payload = filters || {};
   let classId;
   let activityFilter;
   let groupFilter;
   try {
-    classId = normalizeCode_(filters.classId, 'Class ID');
-    activityFilter = normalizeOptionalFilter_(filters.activityKey, 'Activity');
-    groupFilter = normalizeOptionalFilter_(filters.groupKey, 'Group Key');
+    classId = normalizeCode_(payload.classId, 'Class ID');
+    activityFilter = normalizeOptionalFilter_(payload.activityKey, 'Activity');
+    groupFilter = normalizeOptionalFilter_(payload.groupKey, 'Group Key');
   } catch (error) {
     return fail_(error.message);
   }
@@ -588,13 +591,13 @@ function parseScores_(rawScores) {
   };
 
   const values = {};
-  Object.keys(scoreMap).forEach(key => {
+  for (const key in scoreMap) {
     const value = Number(scoreMap[key]);
     if (!Number.isInteger(value) || value < CONFIG.MIN_SCORE || value > CONFIG.MAX_SCORE) {
-      throw new Error(labels[key] + ' must be a whole number from 1 to 10.');
+      return fail_(labels[key] + ' must be a whole number from 1 to 10.');
     }
     values[key] = value;
-  });
+  }
 
   return ok_('Scores valid.', { values });
 }
@@ -613,7 +616,6 @@ function validateRegistration_(registration) {
 function ensureSheet_(ss, sheetName, headers, headerColor) {
   let sheet = ss.getSheetByName(sheetName);
   if (!sheet) sheet = ss.insertSheet(sheetName);
-  sheet.clear();
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground(headerColor);
   sheet.setFrozenRows(1);
