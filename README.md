@@ -1,6 +1,16 @@
 # Peer Evaluation Google Apps Script App
 
-This version adds the requested dashboard-driven defaults and teacher overrides.
+This version is optimized for simple setup by less technical users.
+
+## Files to copy into Apps Script
+
+You only need three files:
+
+- `Code.gs` — all backend logic in one file
+- `Index.html` — student registration and evaluation portal
+- `Faculty.html` — faculty dashboard and reports
+
+No extra `.gs` helper files are required.
 
 ## Default-first behavior
 
@@ -32,23 +42,20 @@ The teacher only needs to change settings in the Faculty Dashboard when they wan
 - Accessible star buttons with aria labels, radio roles, and keyboard arrow support
 - Improved scoring storage using raw score, max raw score, weighted score, weighted percent, and Scores JSON
 
-## Files
-
-- `Code.gs`
-- `Index.html`
-- `Faculty.html`
-
 ## Setup
 
 1. Create a new Google Sheet.
-2. Open Extensions > Apps Script.
-3. Replace `Code.gs` with this package's `Code.gs`.
-4. Add `Index.html`.
-5. Add `Faculty.html`.
-6. Run `ensureSetup()` once.
+2. Open **Extensions > Apps Script**.
+3. Replace the default `Code.gs` with this repo's `Code.gs`.
+4. Add an HTML file named `Index` and paste `Index.html`.
+5. Add an HTML file named `Faculty` and paste `Faculty.html`.
+6. Run `ensureSetup()` once from the Apps Script editor and approve permissions.
 7. Deploy as a web app.
-8. Faculty portal: append `?view=faculty` to the web app URL.
+8. Student portal: open the main web app URL.
+9. Faculty portal: append `?view=faculty` to the web app URL.
 
 ## Important
 
 This version changes the schema. Use a new Google Sheet or clear old tabs before installing.
+
+Default Faculty PIN is currently `Admin2026`. For production, run `changeFacultyPin('Admin2026', 'YourNewSecurePIN')` or set `FACULTY_PIN` in Apps Script Properties.
