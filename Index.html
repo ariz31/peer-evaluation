@@ -398,6 +398,10 @@
         </header>
 
         <div class="content">
+          <datalist id="studentActivityOptions"></datalist>
+          <datalist id="studentClassOptions"></datalist>
+          <datalist id="studentGroupOptions"></datalist>
+
           <div class="tabs" role="tablist" aria-label="Peer evaluation steps">
             <button
               id="tReg"
@@ -440,18 +444,38 @@
               <div class="grid">
                 <p class="field">
                   <label for="ra">Activity Key / Name</label>
-                  <input id="ra" class="ucase" autocomplete="off" required />
+                  <input
+                    id="ra"
+                    class="ucase"
+                    list="studentActivityOptions"
+                    autocomplete="off"
+                    oninput="updateStudentHintLists()"
+                    required
+                  />
                 </p>
                 <p class="field">
                   <label for="rc">Class ID</label>
-                  <input id="rc" class="ucase" autocomplete="off" required />
+                  <input
+                    id="rc"
+                    class="ucase"
+                    list="studentClassOptions"
+                    autocomplete="off"
+                    oninput="updateStudentHintLists()"
+                    required
+                  />
                 </p>
               </div>
 
               <div class="grid">
                 <p class="field">
                   <label for="rg">Group Key</label>
-                  <input id="rg" class="ucase" autocomplete="off" required />
+                  <input
+                    id="rg"
+                    class="ucase"
+                    list="studentGroupOptions"
+                    autocomplete="off"
+                    required
+                  />
                 </p>
                 <p class="field">
                   <label for="rs">Student ID</label>
@@ -504,11 +528,25 @@
               <div class="grid">
                 <p class="field">
                   <label for="ea">Activity</label>
-                  <input id="ea" class="ucase" autocomplete="off" required />
+                  <input
+                    id="ea"
+                    class="ucase"
+                    list="studentActivityOptions"
+                    autocomplete="off"
+                    oninput="updateStudentHintLists()"
+                    required
+                  />
                 </p>
                 <p class="field">
                   <label for="ec">Class ID</label>
-                  <input id="ec" class="ucase" autocomplete="off" required />
+                  <input
+                    id="ec"
+                    class="ucase"
+                    list="studentClassOptions"
+                    autocomplete="off"
+                    oninput="updateStudentHintLists()"
+                    required
+                  />
                 </p>
               </div>
               <p class="field">
@@ -577,6 +615,63 @@
 
     <script>
       const st = { evaluator: null, targets: [], rubric: [], scores: {} };
+      const hints = { activities: [], classes: [], groups: [], cohorts: [] };
+
+      window.addEventListener("load", loadStudentHints);
+
+      function loadStudentHints() {
+        if (
+          typeof google === "undefined" ||
+          !google.script ||
+          !google.script.run
+        )
+          return;
+        google.script.run
+          .withSuccessHandler((r) => {
+            if (!r || !r.success) return;
+            hints.activities = r.activities || [];
+            hints.classes = r.classes || [];
+            hints.groups = r.groups || [];
+            hints.cohorts = r.cohorts || [];
+            updateStudentHintLists();
+          })
+          .getStudentHints();
+      }
+
+      function fillHintList(id, values) {
+        const el = document.getElementById(id);
+        el.innerHTML = "";
+        values.forEach((value) => {
+          const option = document.createElement("option");
+          option.value = value;
+          el.appendChild(option);
+        });
+      }
+
+      function norm(s) {
+        return String(s || "")
+          .trim()
+          .toUpperCase();
+      }
+
+      function updateStudentHintLists() {
+        const activity = norm(el("ra").value || el("ea").value);
+        const classId = norm(el("rc").value || el("ec").value);
+        const matching = hints.cohorts.filter((c) => {
+          return (
+            (!activity || c.activityKey === activity) &&
+            (!classId || c.classId === classId)
+          );
+        });
+        fillHintList("studentActivityOptions", hints.activities);
+        fillHintList("studentClassOptions", hints.classes);
+        fillHintList(
+          "studentGroupOptions",
+          matching.length
+            ? Array.from(new Set(matching.map((c) => c.groupKey))).sort()
+            : hints.groups
+        );
+      }
 
       function tab(x) {
         const isReg = x === "reg";

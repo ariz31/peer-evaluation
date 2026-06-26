@@ -3,6 +3,7 @@
   <head>
     <base target="_top" />
     <meta charset="UTF-8" />
+    <title>Faculty Dashboard</title>
     <style>
       :root {
         --bg: #f8fafc;
@@ -146,8 +147,19 @@
         background: #fee2e2;
       }
 
+      .warn {
+        background: #fef3c7;
+      }
+
       .muted {
         color: var(--muted);
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
       }
 
       table {
@@ -209,6 +221,7 @@
           <button type="button" onclick="show('act')">Activity</button>
           <button type="button" onclick="show('rub')">Rubric</button>
           <button type="button" onclick="show('cor')">Corrections</button>
+          <button type="button" onclick="show('dup')">Duplicates</button>
           <button type="button" onclick="show('rep')">Report</button>
           <button type="button" class="sec" onclick="unlock()">Refresh</button>
           <button type="button" class="sec" onclick="window.print()">
@@ -301,11 +314,19 @@
           <div class="grid">
             <p>
               <label for="rba">Activity</label>
-              <input id="rba" list="activityOptions" />
+              <input
+                id="rba"
+                list="activityOptions"
+                oninput="updateRubricWarnings()"
+              />
             </p>
             <p>
               <label for="rbc">Class</label>
-              <input id="rbc" list="classOptions" />
+              <input
+                id="rbc"
+                list="classOptions"
+                oninput="updateRubricWarnings()"
+              />
             </p>
             <p>
               <label for="rbt">Total Weight</label>
@@ -323,6 +344,7 @@
             Normalize to 100
           </button>
           <button type="button" onclick="saveRubric()">Save Rubric</button>
+          <div id="rbwarn" class="msg warn hide"></div>
           <div class="scroll">
             <table class="rubric">
               <thead>
@@ -347,11 +369,19 @@
           <div class="grid">
             <p>
               <label for="ca">Activity</label>
-              <input id="ca" list="activityOptions" />
+              <input
+                id="ca"
+                list="activityOptions"
+                oninput="updateCorrectionHints()"
+              />
             </p>
             <p>
               <label for="cc">Class</label>
-              <input id="cc" list="classOptions" />
+              <input
+                id="cc"
+                list="classOptions"
+                oninput="updateCorrectionHints()"
+              />
             </p>
             <p>
               <label for="cs">Student ID</label>
@@ -381,16 +411,38 @@
           <div id="cmsg" class="msg hide"></div>
         </section>
 
+        <section id="dup" class="panel hide">
+          <h2>Duplicate Cleanup</h2>
+          <p class="muted">
+            Duplicate registrations keep the first active row and deactivate
+            extras. Duplicate evaluations keep the first submission and remove
+            extras.
+          </p>
+          <div class="toolbar">
+            <button type="button" onclick="cleanupRegs()">
+              Deactivate Duplicate Registrations
+            </button>
+            <button type="button" class="danger" onclick="cleanupEvals()">
+              Remove Duplicate Evaluations
+            </button>
+          </div>
+          <div id="dmsg" class="msg hide"></div>
+          <div id="dupOut"></div>
+        </section>
+
         <section id="rep" class="panel hide">
           <h2>Report</h2>
           <div class="grid">
             <p>
               <label for="fc">Class</label>
-              <select id="fc"></select>
+              <select id="fc" onchange="updateReportFilters('class')"></select>
             </p>
             <p>
               <label for="fa">Activity</label>
-              <select id="fa"></select>
+              <select
+                id="fa"
+                onchange="updateReportFilters('activity')"
+              ></select>
             </p>
             <p>
               <label for="fg">Group</label>
@@ -442,9 +494,10 @@
       }
 
       function show(id) {
-        ["dash", "act", "rub", "cor", "rep"].forEach((x) =>
+        ["dash", "act", "rub", "cor", "dup", "rep"].forEach((x) =>
           q(x).classList.toggle("hide", x !== id)
         );
+        if (id === "dup") renderDuplicates();
       }
 
       function unlock() {
@@ -457,6 +510,7 @@
             q("app").classList.remove("hide");
             dash();
             filters();
+            renderDuplicates();
             if (!q("rbRows").children.length) defaultRubric();
             q("out").textContent = "Unlocked.";
           })
@@ -505,9 +559,8 @@
         fillDataList(q("classOptions"), o.classes || []);
         fillDataList(q("groupOptions"), o.groups || []);
         fillDataList(q("studentOptions"), o.students || []);
-        fillSelect(q("fc"), o.classes || [], "Select Class", false);
-        fillSelect(q("fa"), o.activities || [], "All Activities", true);
-        fillSelect(q("fg"), o.groups || [], "All Groups", true);
+        updateCorrectionHints();
+        updateReportFilters();
       }
 
       function fillDataList(el, arr) {
@@ -520,7 +573,8 @@
         });
       }
 
-      function fillSelect(el, arr, label, all) {
+      function fillSelect(el, arr, label, all, keepValue) {
+        const current = keepValue === undefined ? el.value : keepValue;
         el.innerHTML = "";
         const op = document.createElement("option");
         op.value = all ? "ALL" : "";
@@ -532,6 +586,85 @@
           o.textContent = v;
           el.appendChild(o);
         });
+        if (Array.from(el.options).some((o) => o.value === current)) {
+          el.value = current;
+        }
+      }
+
+      function rowsForFilters(filters) {
+        const rows = (st.state.activities || []).concat(st.state.roster || []);
+        return rows.filter((row) => {
+          return (
+            (!filters.classId || row.classId === filters.classId) &&
+            (!filters.activityKey || row.activityKey === filters.activityKey) &&
+            (!filters.groupKey || row.groupKey === filters.groupKey)
+          );
+        });
+      }
+
+      function valuesFor(field, filters) {
+        return Array.from(
+          new Set(
+            rowsForFilters(filters)
+              .map((row) => row[field])
+              .filter(Boolean)
+          )
+        ).sort();
+      }
+
+      function studentOptionsFor(filters) {
+        return (st.state.roster || [])
+          .filter((row) => {
+            return (
+              (!filters.classId || row.classId === filters.classId) &&
+              (!filters.activityKey ||
+                row.activityKey === filters.activityKey) &&
+              (!filters.groupKey || row.groupKey === filters.groupKey)
+            );
+          })
+          .map((row) => ({
+            value: row.studentId,
+            label: row.name ? row.studentId + " - " + row.name : row.studentId
+          }));
+      }
+
+      function updateCorrectionHints() {
+        if (!st.state) return;
+        const filters = {
+          classId: norm(q("cc").value),
+          activityKey: norm(q("ca").value)
+        };
+        fillDataList(
+          q("groupOptions"),
+          filters.classId || filters.activityKey
+            ? valuesFor("groupKey", filters)
+            : (st.state.options && st.state.options.groups) || []
+        );
+        fillDataList(q("studentOptions"), studentOptionsFor(filters));
+      }
+
+      function updateReportFilters(changed) {
+        if (!st.state) return;
+        const classId = q("fc").value;
+        let activityKey = q("fa").value === "ALL" ? "" : q("fa").value;
+        let groupKey = q("fg").value === "ALL" ? "" : q("fg").value;
+        if (changed === "class") {
+          activityKey = "";
+          groupKey = "";
+        }
+        if (changed === "activity") groupKey = "";
+        const classes = (st.state.options && st.state.options.classes) || [];
+        const activities = valuesFor("activityKey", { classId });
+        const groups = valuesFor("groupKey", { classId, activityKey });
+        fillSelect(q("fc"), classes, "Select Class", false, classId);
+        fillSelect(
+          q("fa"),
+          activities,
+          "All Activities",
+          true,
+          activityKey || "ALL"
+        );
+        fillSelect(q("fg"), groups, "All Groups", true, groupKey || "ALL");
       }
 
       function findActivity() {
@@ -618,6 +751,7 @@
           })
         );
         totalWeight();
+        updateRubricWarnings();
       }
 
       function addRow(c = {}) {
@@ -631,7 +765,7 @@
           esc(c.maxScore || 10) +
           '"></td><td><input data-f="weight" type="number" step=".01" value="' +
           esc(c.weight || 0) +
-          '" oninput="totalWeight()"></td><td><input data-f="required" type="checkbox" ' +
+          '" oninput="totalWeight();updateRubricWarnings()"></td><td><input data-f="required" type="checkbox" ' +
           (c.required !== false ? "checked" : "") +
           '></td><td><select data-f="status"><option ' +
           (c.status !== "Inactive" ? "selected" : "") +
@@ -640,6 +774,7 @@
           '>Inactive</option></select></td><td><button type="button" class="danger" onclick="this.parentNode.parentNode.remove();totalWeight()">Remove</button></td>';
         q("rbRows").appendChild(tr);
         totalWeight();
+        updateRubricWarnings();
       }
 
       function cell(tr, f) {
@@ -663,6 +798,45 @@
         q("rbt").value = readRubric()
           .reduce((s, x) => s + (Number(x.weight) || 0), 0)
           .toFixed(2);
+        updateRubricWarnings();
+      }
+
+      function rubricWarnings() {
+        const rows = readRubric();
+        const warnings = [];
+        const ids = {};
+        const total = rows.reduce((s, x) => s + (Number(x.weight) || 0), 0);
+        rows.forEach((row) => {
+          const id = norm(row.id || row.label);
+          if (!Number.isFinite(row.maxScore) || row.maxScore < 1) {
+            warnings.push(row.label + " needs a max score of at least 1.");
+          }
+          if (!Number.isFinite(row.weight) || row.weight < 0) {
+            warnings.push(row.label + " has an invalid weight.");
+          }
+          if (id) ids[id] = (ids[id] || 0) + 1;
+        });
+        Object.keys(ids).forEach((id) => {
+          if (ids[id] > 1) warnings.push("Duplicate criterion ID: " + id + ".");
+        });
+        if (rows.length && Math.abs(total - 100) > 0.01) {
+          warnings.push(
+            "Total rubric weight is " + total.toFixed(2) + ", not 100."
+          );
+        }
+        return warnings;
+      }
+
+      function updateRubricWarnings() {
+        const warnings = rubricWarnings();
+        const el = q("rbwarn");
+        if (!warnings.length) {
+          el.classList.add("hide");
+          el.textContent = "";
+          return;
+        }
+        el.className = "msg warn";
+        el.textContent = warnings.join(" ");
       }
 
       function normalizeWeights() {
@@ -675,6 +849,7 @@
           cell(tr, "weight").value = ((w / t) * 100).toFixed(2);
         });
         totalWeight();
+        updateRubricWarnings();
       }
 
       function loadRubric() {
@@ -720,6 +895,7 @@
         if (!q("rba").value.trim() || !q("rbc").value.trim()) {
           return msg("rbmsg", "bad", "Enter Activity and Class first.");
         }
+        updateRubricWarnings();
         google.script.run
           .withSuccessHandler((r) => done(r, "rbmsg"))
           .saveRubric(
@@ -776,7 +952,62 @@
           st.state = r;
           dash();
           filters();
+          renderDuplicates();
         }
+      }
+
+      function cleanupRegs() {
+        if (
+          !confirm(
+            "Deactivate extra active duplicate registrations and keep the first row for each student?"
+          )
+        )
+          return;
+        google.script.run
+          .withSuccessHandler((r) => done(r, "dmsg"))
+          .cleanupDuplicateRegistrations(st.pin);
+      }
+
+      function cleanupEvals() {
+        if (
+          !confirm(
+            "Remove extra duplicate evaluations and keep the first submission for each evaluator-target pair?"
+          )
+        )
+          return;
+        google.script.run
+          .withSuccessHandler((r) => done(r, "dmsg"))
+          .cleanupDuplicateEvaluations(st.pin);
+      }
+
+      function renderDuplicates() {
+        if (!st.state) return;
+        const d = st.state.duplicates || { registrations: [], evaluations: [] };
+        q("dupOut").innerHTML =
+          table(
+            "Duplicate Registrations",
+            ["Activity", "Class", "Student", "Name", "Rows", "Groups"],
+            (d.registrations || []).map((x) => [
+              x.activityKey,
+              x.classId,
+              x.studentId,
+              x.name,
+              x.count,
+              (x.groups || []).join(", ")
+            ])
+          ) +
+          table(
+            "Duplicate Evaluations",
+            ["Activity", "Class", "Group", "Evaluator", "Target", "Rows"],
+            (d.evaluations || []).map((x) => [
+              x.activityKey,
+              x.classId,
+              x.groupKey,
+              x.evaluatorName + " (" + x.evaluatorStudentId + ")",
+              x.targetName + " (" + x.targetStudentId + ")",
+              x.count
+            ])
+          );
       }
 
       function generateReport() {

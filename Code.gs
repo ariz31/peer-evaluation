@@ -106,6 +106,19 @@ function changeFacultyPin(oldPin, newPin) {
   PropertiesService.getScriptProperties().setProperty("FACULTY_PIN", p);
   return "Faculty PIN updated.";
 }
+function getStudentHints() {
+  ensureSetup();
+  const a = activities_(),
+    r = regs_();
+  return good_("Hints loaded.", {
+    activities: uniq_(
+      a.map((x) => x.activityKey).concat(r.map((x) => x.activityKey))
+    ),
+    classes: uniq_(a.map((x) => x.classId).concat(r.map((x) => x.classId))),
+    groups: uniq_(a.map((x) => x.groupKey).concat(r.map((x) => x.groupKey))),
+    cohorts: uniqCohorts_(a.concat(r))
+  });
+}
 function saveRegistration(f) {
   ensureSetup();
   const lock = LockService.getScriptLock();
@@ -449,6 +462,85 @@ function setRegistrationStatus(d, pin) {
     "Registration status updated."
   );
 }
+function cleanupDuplicateRegistrations(pin) {
+  ensureSetup();
+  if (String(pin || "") !== pin_()) return bad_("Incorrect faculty code.");
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const s = sheet_(CONFIG.S.G),
+      data = table_(s),
+      seen = {},
+      extras = [];
+    data.rows.forEach((row) => {
+      const o = row.object,
+        key = [
+          safeCode_(o["Activity Key"]),
+          safeCode_(o["Class ID"]),
+          sid_(o["Student ID"])
+        ].join("||");
+      if (!key.replace(/\|/g, "")) return;
+      if (status_(o.Status) !== "Active") return;
+      if (seen[key]) extras.push(row.rowNumber);
+      else seen[key] = row.rowNumber;
+    });
+    extras.forEach((rowNumber) =>
+      setRow_(s, rowNumber, { Status: "Inactive", "Last Updated": new Date() })
+    );
+    audit_("Faculty", "FACULTY", "CLEAN_DUPLICATE_REGISTRATIONS", {
+      count: extras.length
+    });
+    return good_(
+      extras.length
+        ? "Duplicate registrations deactivated."
+        : "No active duplicate registrations found.",
+      facultyState_()
+    );
+  } catch (e) {
+    return bad_(e.message);
+  } finally {
+    lock.releaseLock();
+  }
+}
+function cleanupDuplicateEvaluations(pin) {
+  ensureSetup();
+  if (String(pin || "") !== pin_()) return bad_("Incorrect faculty code.");
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const s = sheet_(CONFIG.S.E),
+      data = table_(s),
+      seen = {},
+      extras = [];
+    data.rows.forEach((row) => {
+      const o = row.object,
+        key = [
+          safeCode_(o["Activity Key"]),
+          safeCode_(o["Class ID"]),
+          safeCode_(o["Group Key"]),
+          sid_(o["Evaluator Student ID"]),
+          sid_(o["Target Student ID"])
+        ].join("||");
+      if (!key.replace(/\|/g, "")) return;
+      if (seen[key]) extras.push(row.rowNumber);
+      else seen[key] = row.rowNumber;
+    });
+    extras.sort((a, b) => b - a).forEach((rowNumber) => s.deleteRow(rowNumber));
+    audit_("Faculty", "FACULTY", "CLEAN_DUPLICATE_EVALUATIONS", {
+      count: extras.length
+    });
+    return good_(
+      extras.length
+        ? "Duplicate evaluations removed."
+        : "No duplicate evaluations found.",
+      facultyState_()
+    );
+  } catch (e) {
+    return bad_(e.message);
+  } finally {
+    lock.releaseLock();
+  }
+}
 function editReg_(d, pin, changes, msg) {
   if (String(pin || "") !== pin_()) return bad_("Incorrect faculty code.");
   try {
@@ -550,7 +642,9 @@ function facultyState_() {
     },
     dashboard: dashboard_(a, r, e),
     activities: a,
-    rubrics: rubrics_()
+    rubrics: rubrics_(),
+    roster: rosterOptions_(r),
+    duplicates: duplicateSummary_(r, e)
   };
 }
 function dashboard_(a, r, e) {
@@ -992,6 +1086,78 @@ function uniqStudents_(rows) {
       return out;
     }, [])
     .sort((a, b) => a.value.localeCompare(b.value));
+}
+function rosterOptions_(rows) {
+  return rows
+    .map((r) => ({
+      activityKey: r.activityKey,
+      classId: r.classId,
+      groupKey: r.groupKey,
+      studentId: r.studentId,
+      name: r.name,
+      status: r.status
+    }))
+    .sort(sortRoster_);
+}
+function duplicateSummary_(rs, es) {
+  return {
+    registrations: duplicateGroups_(
+      rs.filter((r) => r.status === "Active"),
+      (r) => [r.activityKey, r.classId, r.studentId].join("||"),
+      (rows) => ({
+        activityKey: rows[0].activityKey,
+        classId: rows[0].classId,
+        studentId: rows[0].studentId,
+        name: rows[0].name,
+        count: rows.length,
+        extraCount: rows.length - 1,
+        groups: uniq_(rows.map((r) => r.groupKey))
+      })
+    ),
+    evaluations: duplicateGroups_(
+      es,
+      (e) =>
+        [
+          e.activityKey,
+          e.classId,
+          e.groupKey,
+          e.evaluatorStudentId,
+          e.targetStudentId
+        ].join("||"),
+      (rows) => ({
+        activityKey: rows[0].activityKey,
+        classId: rows[0].classId,
+        groupKey: rows[0].groupKey,
+        evaluatorStudentId: rows[0].evaluatorStudentId,
+        evaluatorName: rows[0].evaluatorName,
+        targetStudentId: rows[0].targetStudentId,
+        targetName: rows[0].targetName,
+        count: rows.length,
+        extraCount: rows.length - 1
+      })
+    )
+  };
+}
+function duplicateGroups_(rows, keyFn, mapFn) {
+  const buckets = {};
+  rows.forEach((row) => {
+    const key = keyFn(row);
+    if (!buckets[key]) buckets[key] = [];
+    buckets[key].push(row);
+  });
+  return Object.keys(buckets)
+    .filter((key) => buckets[key].length > 1)
+    .map((key) => mapFn(buckets[key]))
+    .sort((a, b) => {
+      return (
+        a.classId.localeCompare(b.classId) ||
+        a.activityKey.localeCompare(b.activityKey) ||
+        String(a.groupKey || "").localeCompare(String(b.groupKey || "")) ||
+        String(a.studentId || a.evaluatorStudentId || "").localeCompare(
+          String(b.studentId || b.evaluatorStudentId || "")
+        )
+      );
+    });
 }
 function cohortKey_(r) {
   return [r.activityKey, r.classId, r.groupKey].join("||");
