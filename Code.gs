@@ -545,6 +545,7 @@ function facultyState_() {
       ),
       classes: uniq_(a.map((x) => x.classId).concat(r.map((x) => x.classId))),
       groups: uniq_(a.map((x) => x.groupKey).concat(r.map((x) => x.groupKey))),
+      students: uniqStudents_(r),
       cohorts: uniqCohorts_(a.concat(r))
     },
     dashboard: dashboard_(a, r, e),
@@ -977,6 +978,20 @@ function fmt_(v) {
 }
 function uniq_(a) {
   return Array.from(new Set(a.filter(Boolean))).sort();
+}
+function uniqStudents_(rows) {
+  const seen = {};
+  return rows
+    .reduce((out, r) => {
+      if (!r.studentId || seen[r.studentId]) return out;
+      seen[r.studentId] = 1;
+      out.push({
+        value: r.studentId,
+        label: r.name ? r.studentId + " - " + r.name : r.studentId
+      });
+      return out;
+    }, [])
+    .sort((a, b) => a.value.localeCompare(b.value));
 }
 function cohortKey_(r) {
   return [r.activityKey, r.classId, r.groupKey].join("||");

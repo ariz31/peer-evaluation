@@ -6,9 +6,9 @@ This version is optimized for simple setup by less technical users.
 
 You only need three files:
 
-- `Code.gs` — all backend logic in one file
-- `Index.html` — student registration and evaluation portal
-- `Faculty.html` — faculty dashboard and reports
+- `Code.gs` - all backend logic in one file
+- `Index.html` - student registration and evaluation portal
+- `Faculty.html` - faculty dashboard and reports
 
 No extra `.gs` helper files are required.
 

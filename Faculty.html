@@ -1,1 +1,933 @@
-<!DOCTYPE html><html><head><base target="_top"><meta charset="UTF-8"><style>body{font-family:Arial;background:#f8fafc;margin:0;padding:20px;color:#334155}.box{max-width:1100px;margin:auto;background:white;border-radius:14px;padding:22px;box-shadow:0 8px 20px #0001}.panel{border:1px solid #ddd;background:#fafafa;border-radius:10px;padding:14px;margin:12px 0}.hide{display:none}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.card{background:#eef2ff;border-radius:10px;padding:10px}input,select,textarea{width:100%;box-sizing:border-box;padding:9px;border:1px solid #cbd5e1;border-radius:7px}button{background:#2563eb;color:white;border:0;border-radius:8px;padding:9px 12px;margin:3px}.sec{background:#475569}.light{background:#e2e8f0;color:#0f172a}.danger{background:#b91c1c}.msg{padding:9px;border-radius:8px;margin-top:8px}.ok{background:#d1fae5}.bad{background:#fee2e2}.muted{color:#64748b}table{border-collapse:collapse;width:100%;margin:10px 0}th,td{border:1px solid #ddd;padding:7px;text-align:left}th{background:#1e293b;color:white}.scroll{overflow-x:auto}@media(max-width:850px){.grid,.cards{grid-template-columns:1fr 1fr}.rubric{min-width:760px}}</style></head><body><div class="box"><h1>Faculty Dashboard</h1><div id="pinPanel" class="panel"><label>Faculty PIN</label><input id="pin" type="password"><button onclick="unlock()">Unlock</button><div id="umsg" class="msg hide"></div></div><div id="app" class="hide"><button onclick="show('dash')">Dashboard</button><button onclick="show('act')">Activity</button><button onclick="show('rub')">Rubric</button><button onclick="show('cor')">Corrections</button><button onclick="show('rep')">Report</button><button class="sec" onclick="unlock()">Refresh</button><button class="sec" onclick="window.print()">Print</button><section id="dash" class="panel"></section><section id="act" class="panel hide"><h2>Activity Settings</h2><p class="muted">Group is optional here. Leave it blank to apply settings to all groups in the selected Activity + Class.</p><div class="grid"><p><label>Activity</label><input id="aa"></p><p><label>Name</label><input id="an"></p><p><label>Class</label><input id="ac"></p><p><label>Group optional</label><input id="ag" placeholder="Leave blank for ALL groups"></p><p><label>Status</label><select id="as"><option>Active</option><option>Inactive</option></select></p><p><label>Allow Registration</label><select id="ar"><option value="true">Yes</option><option value="false">No</option></select></p><p><label>Reg Opens</label><input id="aro" type="datetime-local"></p><p><label>Reg Closes</label><input id="arc" type="datetime-local"></p><p><label>Eval Opens</label><input id="aeo" type="datetime-local"></p><p><label>Eval Closes</label><input id="aec" type="datetime-local"></p></div><button onclick="saveActivity()">Save Activity Settings</button><div id="amsg" class="msg hide"></div></section><section id="rub" class="panel hide"><h2>Rubric Editor</h2><div class="grid"><p><label>Activity</label><input id="rba"></p><p><label>Class</label><input id="rbc"></p><p><label>Total Weight</label><input id="rbt" readonly></p></div><button onclick="loadRubric()">Load Existing</button><button class="light" onclick="defaultRubric()">Use Default</button><button class="light" onclick="addRow()">Add Criterion</button><button class="light" onclick="normalizeWeights()">Normalize to 100</button><button onclick="saveRubric()">Save Rubric</button><div class="scroll"><table class="rubric"><thead><tr><th>ID</th><th>Label</th><th>Max</th><th>Weight</th><th>Required</th><th>Status</th><th>Action</th></tr></thead><tbody id="rbRows"></tbody></table></div><div id="rbmsg" class="msg hide"></div></section><section id="cor" class="panel hide"><h2>Corrections</h2><div class="grid"><p><label>Activity</label><input id="ca"></p><p><label>Class</label><input id="cc"></p><p><label>Student ID</label><input id="cs"></p><p><label>New Group</label><input id="cg"></p></div><button onclick="moveGroup()">Move Group</button><p><label>New Contribution</label><textarea id="cco"></textarea></p><button onclick="updContrib()">Update Contribution</button><p><label>Status</label><select id="cst"><option>Active</option><option>Inactive</option></select></p><button onclick="setStatus()">Set Status</button><div id="cmsg" class="msg hide"></div></section><section id="rep" class="panel hide"><h2>Report</h2><div class="grid"><p><label>Class</label><select id="fc"></select></p><p><label>Activity</label><select id="fa"></select></p><p><label>Group</label><select id="fg"></select></p><p><button onclick="generateReport()">Generate</button></p></div></section></div><div id="out" class="panel">Unlock the dashboard to begin.</div></div><script>let st={pin:'',state:null};const DEF=[['cooperation','Cooperation',10,20,true],['contribution','Contribution',10,30,true],['communication','Communication',10,15,true],['problemSolving','Problem Solving',10,15,true],['qualityOfWork','Quality of Work',10,20,true]];function q(id){return document.getElementById(id)}function esc(s){return String(s==null?'':s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}function msg(id,t,x){let e=q(id);e.className='msg '+t;e.textContent=x;e.classList.remove('hide')}function show(id){['dash','act','rub','cor','rep'].forEach(x=>q(x).classList.toggle('hide',x!==id))}function unlock(){st.pin=q('pin').value||st.pin;google.script.run.withSuccessHandler(r=>{if(!r.success)return msg('umsg','bad',r.message);st.state=r;q('pinPanel').classList.add('hide');q('app').classList.remove('hide');dash();filters();if(!q('rbRows').children.length)defaultRubric();q('out').textContent='Unlocked.'}).unlockFaculty(st.pin)}function card(a,b){return '<div class="card"><small>'+esc(a)+'</small><br><b>'+esc(b)+'</b></div>'}function dash(){let d=st.state.dashboard;q('dash').innerHTML='<h2>Dashboard</h2><div class="cards">'+card('Activities',d.totalActivities)+card('Active',d.activeActivities)+card('Classes',d.classes)+card('Cohorts',d.cohorts)+card('Students',d.registeredStudents)+card('Submitted',d.submittedEvaluations)+card('Incomplete',d.incompleteEvaluators)+card('1-member groups',d.singleMemberGroups)+'</div>'+table('Incomplete Evaluators',['Activity','Class','Group','Student','Missing'],(d.incomplete||[]).map(x=>[x.activityKey,x.classId,x.groupKey,x.name,(x.missingTargets||[]).join(', ')]))}function filters(){let o=st.state.options||{};fill(q('fc'),o.classes||[],'Select Class',false);fill(q('fa'),o.activities||[],'All Activities',true);fill(q('fg'),o.groups||[],'All Groups',true)}function fill(el,arr,label,all){el.innerHTML='';let op=document.createElement('option');op.value=all?'ALL':'';op.textContent=label;el.appendChild(op);arr.forEach(v=>{let o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o)})}function saveActivity(){let d={activityKey:q('aa').value,activityName:q('an').value,classId:q('ac').value,groupKey:q('ag').value,status:q('as').value,allowRegistration:q('ar').value,regOpen:q('aro').value,regClose:q('arc').value,evalOpen:q('aeo').value,evalClose:q('aec').value};google.script.run.withSuccessHandler(r=>done(r,'amsg')).saveActivitySettingsOptional(d,st.pin)}function defaultRubric(){q('rbRows').innerHTML='';DEF.forEach(x=>addRow({id:x[0],label:x[1],maxScore:x[2],weight:x[3],required:x[4],status:'Active'}));totalWeight()}function addRow(c={}){let tr=document.createElement('tr');tr.innerHTML='<td><input data-f="id" value="'+esc(c.id||'')+'"></td><td><input data-f="label" value="'+esc(c.label||'')+'"></td><td><input data-f="maxScore" type="number" min="1" value="'+esc(c.maxScore||10)+'"></td><td><input data-f="weight" type="number" step=".01" value="'+esc(c.weight||0)+'" oninput="totalWeight()"></td><td><input data-f="required" type="checkbox" '+(c.required!==false?'checked':'')+'></td><td><select data-f="status"><option '+(c.status!=='Inactive'?'selected':'')+'>Active</option><option '+(c.status==='Inactive'?'selected':'')+'>Inactive</option></select></td><td><button class="danger" onclick="this.parentNode.parentNode.remove();totalWeight()">Remove</button></td>';q('rbRows').appendChild(tr);totalWeight()}function cell(tr,f){return tr.querySelector('[data-f="'+f+'"]')}function readRubric(){return Array.from(q('rbRows').querySelectorAll('tr')).map(tr=>({id:cell(tr,'id').value.trim(),label:cell(tr,'label').value.trim(),maxScore:Number(cell(tr,'maxScore').value),weight:Number(cell(tr,'weight').value),required:cell(tr,'required').checked,status:cell(tr,'status').value})).filter(x=>x.label)}function totalWeight(){q('rbt').value=readRubric().reduce((s,x)=>s+(Number(x.weight)||0),0).toFixed(2)}function normalizeWeights(){let rows=readRubric(),t=rows.reduce((s,x)=>s+(Number(x.weight)||0),0);if(!rows.length)return;if(t<=0)t=rows.length;Array.from(q('rbRows').querySelectorAll('tr')).forEach(tr=>{let w=Number(cell(tr,'weight').value)||1;cell(tr,'weight').value=(w/t*100).toFixed(2)});totalWeight()}function loadRubric(){let ak=q('rba').value.trim().toUpperCase(),ci=q('rbc').value.trim().toUpperCase();if(!ak||!ci)return msg('rbmsg','bad','Enter Activity and Class first.');let rows=(st.state.rubrics||[]).filter(x=>String(x.activityKey).toUpperCase()===ak&&String(x.classId).toUpperCase()===ci);q('rbRows').innerHTML='';(rows.length?rows:DEF.map(x=>({criterionId:x[0],label:x[1],maxScore:x[2],weight:x[3],required:x[4],status:'Active'}))).forEach(x=>addRow({id:x.criterionId||x.id,label:x.label,maxScore:x.maxScore,weight:x.weight,required:x.required,status:x.status}));msg('rbmsg','ok',rows.length?'Existing rubric loaded.':'No existing rubric found. Default loaded.')}function saveRubric(){let criteria=readRubric();if(!q('rba').value.trim()||!q('rbc').value.trim())return msg('rbmsg','bad','Enter Activity and Class first.');google.script.run.withSuccessHandler(r=>done(r,'rbmsg')).saveRubric({activityKey:q('rba').value,classId:q('rbc').value,criteria},st.pin)}function moveGroup(){google.script.run.withSuccessHandler(r=>done(r,'cmsg')).moveStudentToGroup({activityKey:q('ca').value,classId:q('cc').value,studentId:q('cs').value,newGroupKey:q('cg').value},st.pin)}function updContrib(){google.script.run.withSuccessHandler(r=>done(r,'cmsg')).updateStudentContribution({activityKey:q('ca').value,classId:q('cc').value,studentId:q('cs').value,contribution:q('cco').value},st.pin)}function setStatus(){google.script.run.withSuccessHandler(r=>done(r,'cmsg')).setRegistrationStatus({activityKey:q('ca').value,classId:q('cc').value,studentId:q('cs').value,status:q('cst').value},st.pin)}function done(r,id){msg(id,r.success?'ok':'bad',r.message);if(r.success){st.state=r;dash();filters()}}function generateReport(){google.script.run.withSuccessHandler(r=>{if(!r.success){q('out').textContent=r.message;return}report(r)}).generateReportData({classId:q('fc').value,activityKey:q('fa').value,groupKey:q('fg').value},st.pin)}function report(r){q('out').innerHTML='<h1>Report: Class '+esc(r.filters.classId)+'</h1><p>Activity: '+esc(r.filters.activityKey)+' | Group: '+esc(r.filters.groupKey)+' | Generated: '+esc(r.generatedAt)+'</p><div class="cards">'+card('Students',r.totals.registeredStudents)+card('Cohorts',r.totals.cohorts)+card('Submitted',r.totals.submittedEvaluations)+card('Expected',r.totals.expectedEvaluations)+card('Avg %',r.totals.averagePercent==null?'—':r.totals.averagePercent)+'</div>'+table('Cohorts',['Activity','Class','Group','Members','Submitted','Expected','Completion','Avg %'],r.cohorts.map(x=>[x.activityKey,x.classId,x.groupKey,x.memberCount,x.submittedEvaluations,x.expectedEvaluations,x.completionPercent+'%',x.averagePercent==null?'—':x.averagePercent]))+table('Student Summary',['Activity','Group','Student','Received','Expected','Avg %','Missing Evaluators'],r.summary.map(x=>[x.activityKey,x.groupKey,x.name+' ('+x.studentId+')',x.receivedCount,x.expectedCount,x.averagePercent==null?'—':x.averagePercent,(x.missingEvaluators||[]).join(', ')]))+table('Completion',['Activity','Group','Evaluator','Submitted','Expected','Missing Targets'],r.completion.map(x=>[x.activityKey,x.groupKey,x.name+' ('+x.studentId+')',x.submittedCount,x.expectedCount,(x.missingTargets||[]).join(', ')]))+table('Logs',['Time','Activity','Group','Target','Evaluator','Weighted %','Comments'],r.details.map(x=>[x.timestamp,x.activityKey,x.groupKey,x.targetName,x.evaluatorName,x.weightedPercent,x.comments]))}function table(title,heads,rows){let h='<h2>'+esc(title)+'</h2><table><tr>'+heads.map(x=>'<th>'+esc(x)+'</th>').join('')+'</tr>';return h+(rows.length?rows.map(r=>'<tr>'+r.map(c=>'<td>'+esc(c==null?'':c)+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+heads.length+'">No rows</td></tr>')+'</table>'}</script></body></html>
+<!doctype html>
+<html>
+  <head>
+    <base target="_top" />
+    <meta charset="UTF-8" />
+    <style>
+      :root {
+        --bg: #f8fafc;
+        --panel: #ffffff;
+        --panel-soft: #f1f5f9;
+        --text: #334155;
+        --muted: #64748b;
+        --line: #cbd5e1;
+        --primary: #2563eb;
+        --primary-dark: #1d4ed8;
+        --secondary: #475569;
+        --danger: #b91c1c;
+      }
+
+      body {
+        margin: 0;
+        padding: 20px;
+        color: var(--text);
+        background: var(--bg);
+        font-family: Arial, sans-serif;
+      }
+
+      .box {
+        max-width: 1120px;
+        margin: auto;
+        padding: 22px;
+        background: var(--panel);
+        border-radius: 8px;
+        box-shadow: 0 8px 20px #0001;
+      }
+
+      .panel {
+        margin: 12px 0;
+        padding: 14px;
+        background: #fafafa;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+      }
+
+      .hide {
+        display: none;
+      }
+
+      .nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .card {
+        min-height: 48px;
+        padding: 10px;
+        background: #eef2ff;
+        border-radius: 8px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 700;
+      }
+
+      p {
+        margin: 0 0 10px;
+      }
+
+      input,
+      select,
+      textarea {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 9px;
+        color: var(--text);
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        font: inherit;
+      }
+
+      textarea {
+        min-height: 92px;
+        resize: vertical;
+      }
+
+      button {
+        margin: 3px;
+        padding: 9px 12px;
+        color: white;
+        background: var(--primary);
+        border: 0;
+        border-radius: 7px;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      button:hover {
+        background: var(--primary-dark);
+      }
+
+      .sec {
+        background: var(--secondary);
+      }
+
+      .light {
+        color: #0f172a;
+        background: #e2e8f0;
+      }
+
+      .light:hover {
+        background: #cbd5e1;
+      }
+
+      .danger {
+        background: var(--danger);
+      }
+
+      .msg {
+        margin-top: 8px;
+        padding: 9px;
+        border-radius: 8px;
+      }
+
+      .ok {
+        background: #d1fae5;
+      }
+
+      .bad {
+        background: #fee2e2;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      table {
+        width: 100%;
+        margin: 10px 0;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 7px;
+        text-align: left;
+        border: 1px solid #ddd;
+      }
+
+      th {
+        color: white;
+        background: #1e293b;
+      }
+
+      .scroll {
+        overflow-x: auto;
+      }
+
+      @media (max-width: 850px) {
+        .grid,
+        .cards {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .rubric {
+          min-width: 760px;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .grid,
+        .cards {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="box">
+      <h1>Faculty Dashboard</h1>
+
+      <div id="pinPanel" class="panel">
+        <label for="pin">Faculty PIN</label>
+        <input id="pin" type="password" />
+        <button type="button" onclick="unlock()">Unlock</button>
+        <div id="umsg" class="msg hide"></div>
+      </div>
+
+      <div id="app" class="hide">
+        <div class="nav">
+          <button type="button" onclick="show('dash')">Dashboard</button>
+          <button type="button" onclick="show('act')">Activity</button>
+          <button type="button" onclick="show('rub')">Rubric</button>
+          <button type="button" onclick="show('cor')">Corrections</button>
+          <button type="button" onclick="show('rep')">Report</button>
+          <button type="button" class="sec" onclick="unlock()">Refresh</button>
+          <button type="button" class="sec" onclick="window.print()">
+            Print
+          </button>
+        </div>
+
+        <datalist id="activityOptions"></datalist>
+        <datalist id="classOptions"></datalist>
+        <datalist id="groupOptions"></datalist>
+        <datalist id="studentOptions"></datalist>
+
+        <section id="dash" class="panel"></section>
+
+        <section id="act" class="panel hide">
+          <h2>Activity Settings</h2>
+          <p class="muted">
+            Group is optional. Blank group settings apply to all groups in the
+            selected activity and class.
+          </p>
+          <div class="grid">
+            <p>
+              <label for="aa">Activity</label>
+              <input
+                id="aa"
+                list="activityOptions"
+                oninput="applyExistingActivity()"
+              />
+            </p>
+            <p>
+              <label for="an">Name</label>
+              <input id="an" />
+            </p>
+            <p>
+              <label for="ac">Class</label>
+              <input
+                id="ac"
+                list="classOptions"
+                oninput="applyExistingActivity()"
+              />
+            </p>
+            <p>
+              <label for="ag">Group optional</label>
+              <input
+                id="ag"
+                list="groupOptions"
+                placeholder="Blank saves ALL"
+                oninput="applyExistingActivity()"
+              />
+            </p>
+            <p>
+              <label for="as">Status</label>
+              <select id="as">
+                <option>Active</option>
+                <option>Inactive</option>
+              </select>
+            </p>
+            <p>
+              <label for="ar">Allow Registration</label>
+              <select id="ar">
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </p>
+            <p>
+              <label for="aro">Reg Opens</label>
+              <input id="aro" type="datetime-local" />
+            </p>
+            <p>
+              <label for="arc">Reg Closes</label>
+              <input id="arc" type="datetime-local" />
+            </p>
+            <p>
+              <label for="aeo">Eval Opens</label>
+              <input id="aeo" type="datetime-local" />
+            </p>
+            <p>
+              <label for="aec">Eval Closes</label>
+              <input id="aec" type="datetime-local" />
+            </p>
+          </div>
+          <button type="button" onclick="saveActivity()">
+            Save Activity Settings
+          </button>
+          <div id="amsg" class="msg hide"></div>
+        </section>
+
+        <section id="rub" class="panel hide">
+          <h2>Rubric Editor</h2>
+          <div class="grid">
+            <p>
+              <label for="rba">Activity</label>
+              <input id="rba" list="activityOptions" />
+            </p>
+            <p>
+              <label for="rbc">Class</label>
+              <input id="rbc" list="classOptions" />
+            </p>
+            <p>
+              <label for="rbt">Total Weight</label>
+              <input id="rbt" readonly />
+            </p>
+          </div>
+          <button type="button" onclick="loadRubric()">Load Existing</button>
+          <button type="button" class="light" onclick="defaultRubric()">
+            Use Default
+          </button>
+          <button type="button" class="light" onclick="addRow()">
+            Add Criterion
+          </button>
+          <button type="button" class="light" onclick="normalizeWeights()">
+            Normalize to 100
+          </button>
+          <button type="button" onclick="saveRubric()">Save Rubric</button>
+          <div class="scroll">
+            <table class="rubric">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Label</th>
+                  <th>Max</th>
+                  <th>Weight</th>
+                  <th>Required</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="rbRows"></tbody>
+            </table>
+          </div>
+          <div id="rbmsg" class="msg hide"></div>
+        </section>
+
+        <section id="cor" class="panel hide">
+          <h2>Corrections</h2>
+          <div class="grid">
+            <p>
+              <label for="ca">Activity</label>
+              <input id="ca" list="activityOptions" />
+            </p>
+            <p>
+              <label for="cc">Class</label>
+              <input id="cc" list="classOptions" />
+            </p>
+            <p>
+              <label for="cs">Student ID</label>
+              <input id="cs" list="studentOptions" />
+            </p>
+            <p>
+              <label for="cg">New Group</label>
+              <input id="cg" list="groupOptions" />
+            </p>
+          </div>
+          <button type="button" onclick="moveGroup()">Move Group</button>
+          <p>
+            <label for="cco">New Contribution</label>
+            <textarea id="cco"></textarea>
+          </p>
+          <button type="button" onclick="updContrib()">
+            Update Contribution
+          </button>
+          <p>
+            <label for="cst">Status</label>
+            <select id="cst">
+              <option>Active</option>
+              <option>Inactive</option>
+            </select>
+          </p>
+          <button type="button" onclick="setStatus()">Set Status</button>
+          <div id="cmsg" class="msg hide"></div>
+        </section>
+
+        <section id="rep" class="panel hide">
+          <h2>Report</h2>
+          <div class="grid">
+            <p>
+              <label for="fc">Class</label>
+              <select id="fc"></select>
+            </p>
+            <p>
+              <label for="fa">Activity</label>
+              <select id="fa"></select>
+            </p>
+            <p>
+              <label for="fg">Group</label>
+              <select id="fg"></select>
+            </p>
+            <p>
+              <button type="button" onclick="generateReport()">Generate</button>
+            </p>
+          </div>
+        </section>
+      </div>
+
+      <div id="out" class="panel">Unlock the dashboard to begin.</div>
+    </div>
+
+    <script>
+      const EMPTY = "\u2014";
+      const st = { pin: "", state: null };
+      const DEF = [
+        ["cooperation", "Cooperation", 10, 20, true],
+        ["contribution", "Contribution", 10, 30, true],
+        ["communication", "Communication", 10, 15, true],
+        ["problemSolving", "Problem Solving", 10, 15, true],
+        ["qualityOfWork", "Quality of Work", 10, 20, true]
+      ];
+
+      function q(id) {
+        return document.getElementById(id);
+      }
+
+      function esc(s) {
+        return String(s == null ? "" : s).replace(
+          /[&<>]/g,
+          (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[m]
+        );
+      }
+
+      function norm(s) {
+        return String(s || "")
+          .trim()
+          .toUpperCase();
+      }
+
+      function msg(id, t, x) {
+        const e = q(id);
+        e.className = "msg " + t;
+        e.textContent = x;
+        e.classList.remove("hide");
+      }
+
+      function show(id) {
+        ["dash", "act", "rub", "cor", "rep"].forEach((x) =>
+          q(x).classList.toggle("hide", x !== id)
+        );
+      }
+
+      function unlock() {
+        st.pin = q("pin").value || st.pin;
+        google.script.run
+          .withSuccessHandler((r) => {
+            if (!r.success) return msg("umsg", "bad", r.message);
+            st.state = r;
+            q("pinPanel").classList.add("hide");
+            q("app").classList.remove("hide");
+            dash();
+            filters();
+            if (!q("rbRows").children.length) defaultRubric();
+            q("out").textContent = "Unlocked.";
+          })
+          .unlockFaculty(st.pin);
+      }
+
+      function card(a, b) {
+        return (
+          '<div class="card"><small>' +
+          esc(a) +
+          "</small><br><b>" +
+          esc(b) +
+          "</b></div>"
+        );
+      }
+
+      function dash() {
+        const d = st.state.dashboard;
+        q("dash").innerHTML =
+          '<h2>Dashboard</h2><div class="cards">' +
+          card("Activities", d.totalActivities) +
+          card("Active", d.activeActivities) +
+          card("Classes", d.classes) +
+          card("Cohorts", d.cohorts) +
+          card("Students", d.registeredStudents) +
+          card("Submitted", d.submittedEvaluations) +
+          card("Incomplete", d.incompleteEvaluators) +
+          card("1-member groups", d.singleMemberGroups) +
+          "</div>" +
+          table(
+            "Incomplete Evaluators",
+            ["Activity", "Class", "Group", "Student", "Missing"],
+            (d.incomplete || []).map((x) => [
+              x.activityKey,
+              x.classId,
+              x.groupKey,
+              x.name,
+              (x.missingTargets || []).join(", ")
+            ])
+          );
+      }
+
+      function filters() {
+        const o = st.state.options || {};
+        fillDataList(q("activityOptions"), o.activities || []);
+        fillDataList(q("classOptions"), o.classes || []);
+        fillDataList(q("groupOptions"), o.groups || []);
+        fillDataList(q("studentOptions"), o.students || []);
+        fillSelect(q("fc"), o.classes || [], "Select Class", false);
+        fillSelect(q("fa"), o.activities || [], "All Activities", true);
+        fillSelect(q("fg"), o.groups || [], "All Groups", true);
+      }
+
+      function fillDataList(el, arr) {
+        el.innerHTML = "";
+        arr.forEach((item) => {
+          const o = document.createElement("option");
+          o.value = item.value || item;
+          if (item.label) o.label = item.label;
+          el.appendChild(o);
+        });
+      }
+
+      function fillSelect(el, arr, label, all) {
+        el.innerHTML = "";
+        const op = document.createElement("option");
+        op.value = all ? "ALL" : "";
+        op.textContent = label;
+        el.appendChild(op);
+        arr.forEach((v) => {
+          const o = document.createElement("option");
+          o.value = v;
+          o.textContent = v;
+          el.appendChild(o);
+        });
+      }
+
+      function findActivity() {
+        const ak = norm(q("aa").value);
+        const ci = norm(q("ac").value);
+        const gk = norm(q("ag").value) || "ALL";
+        if (!ak || !ci) return null;
+        const rows = st.state.activities || [];
+        return (
+          rows.find(
+            (x) =>
+              norm(x.activityKey) === ak &&
+              norm(x.classId) === ci &&
+              norm(x.groupKey) === gk
+          ) ||
+          rows.find(
+            (x) =>
+              norm(x.activityKey) === ak &&
+              norm(x.classId) === ci &&
+              norm(x.groupKey) === "ALL"
+          )
+        );
+      }
+
+      function applyExistingActivity() {
+        if (!st.state) return;
+        const a = findActivity();
+        if (!a) return;
+        q("an").value = a.activityName || a.activityKey;
+        q("as").value = a.status || "Active";
+        q("ar").value = a.allowRegistration === false ? "false" : "true";
+        q("aro").value = toDateInput(a.regOpen);
+        q("arc").value = toDateInput(a.regClose);
+        q("aeo").value = toDateInput(a.evalOpen);
+        q("aec").value = toDateInput(a.evalClose);
+      }
+
+      function toDateInput(v) {
+        if (!v) return "";
+        const d = new Date(v);
+        if (isNaN(d.getTime())) return "";
+        const pad = (n) => String(n).padStart(2, "0");
+        return (
+          d.getFullYear() +
+          "-" +
+          pad(d.getMonth() + 1) +
+          "-" +
+          pad(d.getDate()) +
+          "T" +
+          pad(d.getHours()) +
+          ":" +
+          pad(d.getMinutes())
+        );
+      }
+
+      function saveActivity() {
+        const d = {
+          activityKey: q("aa").value,
+          activityName: q("an").value,
+          classId: q("ac").value,
+          groupKey: q("ag").value,
+          status: q("as").value,
+          allowRegistration: q("ar").value,
+          regOpen: q("aro").value,
+          regClose: q("arc").value,
+          evalOpen: q("aeo").value,
+          evalClose: q("aec").value
+        };
+        google.script.run
+          .withSuccessHandler((r) => done(r, "amsg"))
+          .saveActivitySettingsOptional(d, st.pin);
+      }
+
+      function defaultRubric() {
+        q("rbRows").innerHTML = "";
+        DEF.forEach((x) =>
+          addRow({
+            id: x[0],
+            label: x[1],
+            maxScore: x[2],
+            weight: x[3],
+            required: x[4],
+            status: "Active"
+          })
+        );
+        totalWeight();
+      }
+
+      function addRow(c = {}) {
+        const tr = document.createElement("tr");
+        tr.innerHTML =
+          '<td><input data-f="id" value="' +
+          esc(c.id || "") +
+          '"></td><td><input data-f="label" value="' +
+          esc(c.label || "") +
+          '"></td><td><input data-f="maxScore" type="number" min="1" value="' +
+          esc(c.maxScore || 10) +
+          '"></td><td><input data-f="weight" type="number" step=".01" value="' +
+          esc(c.weight || 0) +
+          '" oninput="totalWeight()"></td><td><input data-f="required" type="checkbox" ' +
+          (c.required !== false ? "checked" : "") +
+          '></td><td><select data-f="status"><option ' +
+          (c.status !== "Inactive" ? "selected" : "") +
+          ">Active</option><option " +
+          (c.status === "Inactive" ? "selected" : "") +
+          '>Inactive</option></select></td><td><button type="button" class="danger" onclick="this.parentNode.parentNode.remove();totalWeight()">Remove</button></td>';
+        q("rbRows").appendChild(tr);
+        totalWeight();
+      }
+
+      function cell(tr, f) {
+        return tr.querySelector('[data-f="' + f + '"]');
+      }
+
+      function readRubric() {
+        return Array.from(q("rbRows").querySelectorAll("tr"))
+          .map((tr) => ({
+            id: cell(tr, "id").value.trim(),
+            label: cell(tr, "label").value.trim(),
+            maxScore: Number(cell(tr, "maxScore").value),
+            weight: Number(cell(tr, "weight").value),
+            required: cell(tr, "required").checked,
+            status: cell(tr, "status").value
+          }))
+          .filter((x) => x.label);
+      }
+
+      function totalWeight() {
+        q("rbt").value = readRubric()
+          .reduce((s, x) => s + (Number(x.weight) || 0), 0)
+          .toFixed(2);
+      }
+
+      function normalizeWeights() {
+        const rows = readRubric();
+        let t = rows.reduce((s, x) => s + (Number(x.weight) || 0), 0);
+        if (!rows.length) return;
+        if (t <= 0) t = rows.length;
+        Array.from(q("rbRows").querySelectorAll("tr")).forEach((tr) => {
+          const w = Number(cell(tr, "weight").value) || 1;
+          cell(tr, "weight").value = ((w / t) * 100).toFixed(2);
+        });
+        totalWeight();
+      }
+
+      function loadRubric() {
+        const ak = norm(q("rba").value);
+        const ci = norm(q("rbc").value);
+        if (!ak || !ci)
+          return msg("rbmsg", "bad", "Enter Activity and Class first.");
+        const rows = (st.state.rubrics || []).filter(
+          (x) => norm(x.activityKey) === ak && norm(x.classId) === ci
+        );
+        q("rbRows").innerHTML = "";
+        (rows.length
+          ? rows
+          : DEF.map((x) => ({
+              criterionId: x[0],
+              label: x[1],
+              maxScore: x[2],
+              weight: x[3],
+              required: x[4],
+              status: "Active"
+            }))
+        ).forEach((x) =>
+          addRow({
+            id: x.criterionId || x.id,
+            label: x.label,
+            maxScore: x.maxScore,
+            weight: x.weight,
+            required: x.required,
+            status: x.status
+          })
+        );
+        msg(
+          "rbmsg",
+          "ok",
+          rows.length
+            ? "Existing rubric loaded."
+            : "No existing rubric found. Default loaded."
+        );
+      }
+
+      function saveRubric() {
+        const criteria = readRubric();
+        if (!q("rba").value.trim() || !q("rbc").value.trim()) {
+          return msg("rbmsg", "bad", "Enter Activity and Class first.");
+        }
+        google.script.run
+          .withSuccessHandler((r) => done(r, "rbmsg"))
+          .saveRubric(
+            { activityKey: q("rba").value, classId: q("rbc").value, criteria },
+            st.pin
+          );
+      }
+
+      function moveGroup() {
+        google.script.run
+          .withSuccessHandler((r) => done(r, "cmsg"))
+          .moveStudentToGroup(
+            {
+              activityKey: q("ca").value,
+              classId: q("cc").value,
+              studentId: q("cs").value,
+              newGroupKey: q("cg").value
+            },
+            st.pin
+          );
+      }
+
+      function updContrib() {
+        google.script.run
+          .withSuccessHandler((r) => done(r, "cmsg"))
+          .updateStudentContribution(
+            {
+              activityKey: q("ca").value,
+              classId: q("cc").value,
+              studentId: q("cs").value,
+              contribution: q("cco").value
+            },
+            st.pin
+          );
+      }
+
+      function setStatus() {
+        google.script.run
+          .withSuccessHandler((r) => done(r, "cmsg"))
+          .setRegistrationStatus(
+            {
+              activityKey: q("ca").value,
+              classId: q("cc").value,
+              studentId: q("cs").value,
+              status: q("cst").value
+            },
+            st.pin
+          );
+      }
+
+      function done(r, id) {
+        msg(id, r.success ? "ok" : "bad", r.message);
+        if (r.success) {
+          st.state = r;
+          dash();
+          filters();
+        }
+      }
+
+      function generateReport() {
+        google.script.run
+          .withSuccessHandler((r) => {
+            if (!r.success) {
+              q("out").textContent = r.message;
+              return;
+            }
+            report(r);
+          })
+          .generateReportData(
+            {
+              classId: q("fc").value,
+              activityKey: q("fa").value,
+              groupKey: q("fg").value
+            },
+            st.pin
+          );
+      }
+
+      function report(r) {
+        q("out").innerHTML =
+          "<h1>Report: Class " +
+          esc(r.filters.classId) +
+          "</h1><p>Activity: " +
+          esc(r.filters.activityKey) +
+          " | Group: " +
+          esc(r.filters.groupKey) +
+          " | Generated: " +
+          esc(r.generatedAt) +
+          '</p><div class="cards">' +
+          card("Students", r.totals.registeredStudents) +
+          card("Cohorts", r.totals.cohorts) +
+          card("Submitted", r.totals.submittedEvaluations) +
+          card("Expected", r.totals.expectedEvaluations) +
+          card(
+            "Avg %",
+            r.totals.averagePercent == null ? EMPTY : r.totals.averagePercent
+          ) +
+          "</div>" +
+          table(
+            "Cohorts",
+            [
+              "Activity",
+              "Class",
+              "Group",
+              "Members",
+              "Submitted",
+              "Expected",
+              "Completion",
+              "Avg %"
+            ],
+            r.cohorts.map((x) => [
+              x.activityKey,
+              x.classId,
+              x.groupKey,
+              x.memberCount,
+              x.submittedEvaluations,
+              x.expectedEvaluations,
+              x.completionPercent + "%",
+              x.averagePercent == null ? EMPTY : x.averagePercent
+            ])
+          ) +
+          table(
+            "Student Summary",
+            [
+              "Activity",
+              "Group",
+              "Student",
+              "Received",
+              "Expected",
+              "Avg %",
+              "Missing Evaluators"
+            ],
+            r.summary.map((x) => [
+              x.activityKey,
+              x.groupKey,
+              x.name + " (" + x.studentId + ")",
+              x.receivedCount,
+              x.expectedCount,
+              x.averagePercent == null ? EMPTY : x.averagePercent,
+              (x.missingEvaluators || []).join(", ")
+            ])
+          ) +
+          table(
+            "Completion",
+            [
+              "Activity",
+              "Group",
+              "Evaluator",
+              "Submitted",
+              "Expected",
+              "Missing Targets"
+            ],
+            r.completion.map((x) => [
+              x.activityKey,
+              x.groupKey,
+              x.name + " (" + x.studentId + ")",
+              x.submittedCount,
+              x.expectedCount,
+              (x.missingTargets || []).join(", ")
+            ])
+          ) +
+          table(
+            "Logs",
+            [
+              "Time",
+              "Activity",
+              "Group",
+              "Target",
+              "Evaluator",
+              "Weighted %",
+              "Comments"
+            ],
+            r.details.map((x) => [
+              x.timestamp,
+              x.activityKey,
+              x.groupKey,
+              x.targetName,
+              x.evaluatorName,
+              x.weightedPercent,
+              x.comments
+            ])
+          );
+      }
+
+      function table(title, heads, rows) {
+        let h =
+          "<h2>" +
+          esc(title) +
+          "</h2><table><tr>" +
+          heads.map((x) => "<th>" + esc(x) + "</th>").join("") +
+          "</tr>";
+        return (
+          h +
+          (rows.length
+            ? rows
+                .map(
+                  (r) =>
+                    "<tr>" +
+                    r
+                      .map((c) => "<td>" + esc(c == null ? "" : c) + "</td>")
+                      .join("") +
+                    "</tr>"
+                )
+                .join("")
+            : '<tr><td colspan="' + heads.length + '">No rows</td></tr>') +
+          "</table>"
+        );
+      }
+    </script>
+  </body>
+</html>
