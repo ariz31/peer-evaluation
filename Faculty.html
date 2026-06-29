@@ -26,6 +26,10 @@
         font-family: Arial, sans-serif;
       }
 
+      body.is-busy {
+        cursor: wait;
+      }
+
       .box {
         max-width: 1120px;
         margin: auto;
@@ -44,7 +48,7 @@
       }
 
       .hide {
-        display: none;
+        display: none !important;
       }
 
       .nav {
@@ -96,6 +100,13 @@
         font: inherit;
       }
 
+      input:disabled,
+      select:disabled,
+      textarea:disabled {
+        color: #64748b;
+        background: #e2e8f0;
+      }
+
       textarea {
         min-height: 92px;
         resize: vertical;
@@ -116,6 +127,11 @@
         background: var(--primary-dark);
       }
 
+      button:disabled {
+        cursor: not-allowed;
+        background: #94a3b8;
+      }
+
       .sec {
         background: var(--secondary);
       }
@@ -131,6 +147,40 @@
 
       .danger {
         background: var(--danger);
+      }
+
+      .loading-panel {
+        margin: 12px 0;
+        padding: 13px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        box-shadow: inset 0 1px 0 #ffffff80;
+      }
+
+      .loading-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+        color: #1e3a8a;
+        font-size: 0.9rem;
+        font-weight: 800;
+      }
+
+      .loading-track {
+        height: 12px;
+        overflow: hidden;
+        background: #dbeafe;
+        border-radius: 999px;
+      }
+
+      .loading-fill {
+        width: 0%;
+        height: 100%;
+        background: var(--primary);
+        border-radius: inherit;
+        transition: width 0.2s ease;
       }
 
       .msg {
@@ -184,6 +234,12 @@
         overflow-x: auto;
       }
 
+      @media (prefers-reduced-motion: reduce) {
+        .loading-fill {
+          transition: none;
+        }
+      }
+
       @media (max-width: 850px) {
         .grid,
         .cards {
@@ -205,8 +261,31 @@
   </head>
 
   <body>
-    <div class="box">
+    <div class="box" aria-busy="false">
       <h1>Faculty Dashboard</h1>
+
+      <div
+        id="facultyLoading"
+        class="loading-panel hide"
+        role="status"
+        aria-live="polite"
+        aria-hidden="true"
+      >
+        <div class="loading-head">
+          <span id="facultyLoadingText">Processing...</span>
+          <span id="facultyLoadingPercent">0%</span>
+        </div>
+        <div
+          class="loading-track"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+          aria-label="Faculty process progress"
+        >
+          <div id="facultyLoadingFill" class="loading-fill"></div>
+        </div>
+      </div>
 
       <div id="pinPanel" class="panel">
         <label for="pin">Faculty PIN</label>
@@ -224,9 +303,7 @@
           <button type="button" onclick="show('dup')">Duplicates</button>
           <button type="button" onclick="show('rep')">Report</button>
           <button type="button" class="sec" onclick="unlock()">Refresh</button>
-          <button type="button" class="sec" onclick="window.print()">
-            Print
-          </button>
+          <button type="button" class="sec" onclick="window.print()">Print</button>
         </div>
 
         <datalist id="activityOptions"></datalist>
@@ -239,123 +316,42 @@
         <section id="act" class="panel hide">
           <h2>Activity Settings</h2>
           <p class="muted">
-            Group is optional. Blank group settings apply to all groups in the
-            selected activity and class.
+            Group is optional. Blank group settings apply to all groups in the selected activity and class.
           </p>
           <div class="grid">
-            <p>
-              <label for="aa">Activity</label>
-              <input
-                id="aa"
-                list="activityOptions"
-                oninput="applyExistingActivity()"
-              />
-            </p>
-            <p>
-              <label for="an">Name</label>
-              <input id="an" />
-            </p>
-            <p>
-              <label for="ac">Class</label>
-              <input
-                id="ac"
-                list="classOptions"
-                oninput="applyExistingActivity()"
-              />
-            </p>
-            <p>
-              <label for="ag">Group optional</label>
-              <input
-                id="ag"
-                list="groupOptions"
-                placeholder="Blank saves ALL"
-                oninput="applyExistingActivity()"
-              />
-            </p>
-            <p>
-              <label for="as">Status</label>
-              <select id="as">
-                <option>Active</option>
-                <option>Inactive</option>
-              </select>
-            </p>
-            <p>
-              <label for="ar">Allow Registration</label>
-              <select id="ar">
-                <option value="true">Yes</option>
-                <option value="false">No</option>
-              </select>
-            </p>
-            <p>
-              <label for="aro">Reg Opens</label>
-              <input id="aro" type="datetime-local" />
-            </p>
-            <p>
-              <label for="arc">Reg Closes</label>
-              <input id="arc" type="datetime-local" />
-            </p>
-            <p>
-              <label for="aeo">Eval Opens</label>
-              <input id="aeo" type="datetime-local" />
-            </p>
-            <p>
-              <label for="aec">Eval Closes</label>
-              <input id="aec" type="datetime-local" />
-            </p>
+            <p><label for="aa">Activity</label><input id="aa" list="activityOptions" oninput="applyExistingActivity()" /></p>
+            <p><label for="an">Name</label><input id="an" /></p>
+            <p><label for="ac">Class</label><input id="ac" list="classOptions" oninput="applyExistingActivity()" /></p>
+            <p><label for="ag">Group optional</label><input id="ag" list="groupOptions" placeholder="Blank saves ALL" oninput="applyExistingActivity()" /></p>
+            <p><label for="as">Status</label><select id="as"><option>Active</option><option>Inactive</option></select></p>
+            <p><label for="ar">Allow Registration</label><select id="ar"><option value="true">Yes</option><option value="false">No</option></select></p>
+            <p><label for="aro">Reg Opens</label><input id="aro" type="datetime-local" /></p>
+            <p><label for="arc">Reg Closes</label><input id="arc" type="datetime-local" /></p>
+            <p><label for="aeo">Eval Opens</label><input id="aeo" type="datetime-local" /></p>
+            <p><label for="aec">Eval Closes</label><input id="aec" type="datetime-local" /></p>
           </div>
-          <button type="button" onclick="saveActivity()">
-            Save Activity Settings
-          </button>
+          <button type="button" onclick="saveActivity()">Save Activity Settings</button>
           <div id="amsg" class="msg hide"></div>
         </section>
 
         <section id="rub" class="panel hide">
           <h2>Rubric Editor</h2>
           <div class="grid">
-            <p>
-              <label for="rba">Activity</label>
-              <input
-                id="rba"
-                list="activityOptions"
-                oninput="updateRubricWarnings()"
-              />
-            </p>
-            <p>
-              <label for="rbc">Class</label>
-              <input
-                id="rbc"
-                list="classOptions"
-                oninput="updateRubricWarnings()"
-              />
-            </p>
-            <p>
-              <label for="rbt">Total Weight</label>
-              <input id="rbt" readonly />
-            </p>
+            <p><label for="rba">Activity</label><input id="rba" list="activityOptions" oninput="updateRubricWarnings()" /></p>
+            <p><label for="rbc">Class</label><input id="rbc" list="classOptions" oninput="updateRubricWarnings()" /></p>
+            <p><label for="rbt">Total Weight</label><input id="rbt" readonly /></p>
           </div>
           <button type="button" onclick="loadRubric()">Load Existing</button>
-          <button type="button" class="light" onclick="defaultRubric()">
-            Use Default
-          </button>
-          <button type="button" class="light" onclick="addRow()">
-            Add Criterion
-          </button>
-          <button type="button" class="light" onclick="normalizeWeights()">
-            Normalize to 100
-          </button>
+          <button type="button" class="light" onclick="defaultRubric()">Use Default</button>
+          <button type="button" class="light" onclick="addRow()">Add Criterion</button>
+          <button type="button" class="light" onclick="normalizeWeights()">Normalize to 100</button>
           <button type="button" onclick="saveRubric()">Save Rubric</button>
           <div id="rbwarn" class="msg warn hide"></div>
           <div class="scroll">
             <table class="rubric">
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Label</th>
-                  <th>Max</th>
-                  <th>Weight</th>
-                  <th>Required</th>
-                  <th>Status</th>
-                  <th>Action</th>
+                  <th>ID</th><th>Label</th><th>Max</th><th>Weight</th><th>Required</th><th>Status</th><th>Action</th>
                 </tr>
               </thead>
               <tbody id="rbRows"></tbody>
@@ -367,46 +363,15 @@
         <section id="cor" class="panel hide">
           <h2>Corrections</h2>
           <div class="grid">
-            <p>
-              <label for="ca">Activity</label>
-              <input
-                id="ca"
-                list="activityOptions"
-                oninput="updateCorrectionHints()"
-              />
-            </p>
-            <p>
-              <label for="cc">Class</label>
-              <input
-                id="cc"
-                list="classOptions"
-                oninput="updateCorrectionHints()"
-              />
-            </p>
-            <p>
-              <label for="cs">Student ID</label>
-              <input id="cs" list="studentOptions" />
-            </p>
-            <p>
-              <label for="cg">New Group</label>
-              <input id="cg" list="groupOptions" />
-            </p>
+            <p><label for="ca">Activity</label><input id="ca" list="activityOptions" oninput="updateCorrectionHints()" /></p>
+            <p><label for="cc">Class</label><input id="cc" list="classOptions" oninput="updateCorrectionHints()" /></p>
+            <p><label for="cs">Student ID</label><input id="cs" list="studentOptions" /></p>
+            <p><label for="cg">New Group</label><input id="cg" list="groupOptions" /></p>
           </div>
           <button type="button" onclick="moveGroup()">Move Group</button>
-          <p>
-            <label for="cco">New Contribution</label>
-            <textarea id="cco"></textarea>
-          </p>
-          <button type="button" onclick="updContrib()">
-            Update Contribution
-          </button>
-          <p>
-            <label for="cst">Status</label>
-            <select id="cst">
-              <option>Active</option>
-              <option>Inactive</option>
-            </select>
-          </p>
+          <p><label for="cco">New Contribution</label><textarea id="cco"></textarea></p>
+          <button type="button" onclick="updContrib()">Update Contribution</button>
+          <p><label for="cst">Status</label><select id="cst"><option>Active</option><option>Inactive</option></select></p>
           <button type="button" onclick="setStatus()">Set Status</button>
           <div id="cmsg" class="msg hide"></div>
         </section>
@@ -414,17 +379,11 @@
         <section id="dup" class="panel hide">
           <h2>Duplicate Cleanup</h2>
           <p class="muted">
-            Duplicate registrations keep the first active row and deactivate
-            extras. Duplicate evaluations keep the first submission and remove
-            extras.
+            Duplicate registrations keep the first active row and deactivate extras. Duplicate evaluations keep the first submission and remove extras.
           </p>
           <div class="toolbar">
-            <button type="button" onclick="cleanupRegs()">
-              Deactivate Duplicate Registrations
-            </button>
-            <button type="button" class="danger" onclick="cleanupEvals()">
-              Remove Duplicate Evaluations
-            </button>
+            <button type="button" onclick="cleanupRegs()">Deactivate Duplicate Registrations</button>
+            <button type="button" class="danger" onclick="cleanupEvals()">Remove Duplicate Evaluations</button>
           </div>
           <div id="dmsg" class="msg hide"></div>
           <div id="dupOut"></div>
@@ -433,24 +392,10 @@
         <section id="rep" class="panel hide">
           <h2>Report</h2>
           <div class="grid">
-            <p>
-              <label for="fc">Class</label>
-              <select id="fc" onchange="updateReportFilters('class')"></select>
-            </p>
-            <p>
-              <label for="fa">Activity</label>
-              <select
-                id="fa"
-                onchange="updateReportFilters('activity')"
-              ></select>
-            </p>
-            <p>
-              <label for="fg">Group</label>
-              <select id="fg"></select>
-            </p>
-            <p>
-              <button type="button" onclick="generateReport()">Generate</button>
-            </p>
+            <p><label for="fc">Class</label><select id="fc" onchange="updateReportFilters('class')"></select></p>
+            <p><label for="fa">Activity</label><select id="fa" onchange="updateReportFilters('activity')"></select></p>
+            <p><label for="fg">Group</label><select id="fg"></select></p>
+            <p><button type="button" onclick="generateReport()">Generate</button></p>
           </div>
         </section>
       </div>
@@ -461,6 +406,7 @@
     <script>
       const EMPTY = "\u2014";
       const st = { pin: "", state: null };
+      const loading = { timer: null, percent: 0 };
       const DEF = [
         ["cooperation", "Cooperation", 10, 20, true],
         ["contribution", "Contribution", 10, 30, true],
@@ -474,36 +420,89 @@
       }
 
       function esc(s) {
-        return String(s == null ? "" : s).replace(
-          /[&<>]/g,
-          (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[m]
-        );
+        return String(s == null ? "" : s).replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[m]);
       }
 
       function norm(s) {
-        return String(s || "")
-          .trim()
-          .toUpperCase();
+        return String(s || "").trim().toUpperCase();
       }
 
       function msg(id, t, x) {
-        const e = q(id);
-        e.className = "msg " + t;
-        e.textContent = x;
-        e.classList.remove("hide");
+        const box = q(id);
+        box.className = "msg " + t;
+        box.textContent = x;
+        box.classList.remove("hide");
       }
 
       function show(id) {
-        ["dash", "act", "rub", "cor", "dup", "rep"].forEach((x) =>
-          q(x).classList.toggle("hide", x !== id)
-        );
+        if (document.body.classList.contains("is-busy")) return;
+        ["dash", "act", "rub", "cor", "dup", "rep"].forEach((x) => q(x).classList.toggle("hide", x !== id));
         if (id === "dup") renderDuplicates();
+      }
+
+      function setFacultyControlsLocked(on) {
+        document.body.classList.toggle("is-busy", on);
+        document.querySelector(".box").setAttribute("aria-busy", String(on));
+        document.querySelectorAll("button, input, select, textarea").forEach((control) => {
+          if (on) {
+            control.dataset.wasDisabled = control.disabled ? "true" : "false";
+            control.disabled = true;
+          } else {
+            if (control.dataset.wasDisabled !== "true") control.disabled = false;
+            delete control.dataset.wasDisabled;
+          }
+        });
+      }
+
+      function setFacultyProgress(percent, text) {
+        loading.percent = Math.max(0, Math.min(100, Math.round(percent)));
+        if (text) q("facultyLoadingText").textContent = text;
+        q("facultyLoadingPercent").textContent = loading.percent + "%";
+        q("facultyLoadingFill").style.width = loading.percent + "%";
+        document.querySelector("#facultyLoading .loading-track").setAttribute("aria-valuenow", String(loading.percent));
+      }
+
+      function startFacultyLoading(text) {
+        clearInterval(loading.timer);
+        q("facultyLoading").classList.remove("hide");
+        q("facultyLoading").setAttribute("aria-hidden", "false");
+        setFacultyControlsLocked(true);
+        setFacultyProgress(8, text || "Processing...");
+        loading.timer = setInterval(() => {
+          if (loading.percent < 94) setFacultyProgress(loading.percent + Math.max(1, Math.ceil((94 - loading.percent) * 0.18)));
+        }, 260);
+      }
+
+      function stopFacultyLoading(text) {
+        clearInterval(loading.timer);
+        setFacultyProgress(100, text || "Complete");
+        setTimeout(() => {
+          q("facultyLoading").classList.add("hide");
+          q("facultyLoading").setAttribute("aria-hidden", "true");
+          setFacultyControlsLocked(false);
+        }, 350);
+      }
+
+      function failFacultyLoading(text) {
+        clearInterval(loading.timer);
+        setFacultyProgress(100, text || "Unable to complete request");
+        setTimeout(() => {
+          q("facultyLoading").classList.add("hide");
+          q("facultyLoading").setAttribute("aria-hidden", "true");
+          setFacultyControlsLocked(false);
+        }, 550);
+      }
+
+      function failMsg(id, e) {
+        msg(id, "bad", e && e.message ? e.message : String(e));
       }
 
       function unlock() {
         st.pin = q("pin").value || st.pin;
+        startFacultyLoading("Unlocking dashboard...");
         google.script.run
           .withSuccessHandler((r) => {
+            stopFacultyLoading(r.success ? "Dashboard loaded" : "Unlock complete");
             if (!r.success) return msg("umsg", "bad", r.message);
             st.state = r;
             q("pinPanel").classList.add("hide");
@@ -514,23 +513,21 @@
             if (!q("rbRows").children.length) defaultRubric();
             q("out").textContent = "Unlocked.";
           })
+          .withFailureHandler((e) => {
+            failFacultyLoading("Unlock failed");
+            failMsg("umsg", e);
+          })
           .unlockFaculty(st.pin);
       }
 
       function card(a, b) {
-        return (
-          '<div class="card"><small>' +
-          esc(a) +
-          "</small><br><b>" +
-          esc(b) +
-          "</b></div>"
-        );
+        return '<div class="card"><small>' + esc(a) + "</small><br><b>" + esc(b) + "</b></div>";
       }
 
       function dash() {
         const d = st.state.dashboard;
         q("dash").innerHTML =
-          '<h2>Dashboard</h2><div class="cards">' +
+          "<h2>Dashboard</h2><div class=\"cards\">" +
           card("Activities", d.totalActivities) +
           card("Active", d.activeActivities) +
           card("Classes", d.classes) +
@@ -543,13 +540,7 @@
           table(
             "Incomplete Evaluators",
             ["Activity", "Class", "Group", "Student", "Missing"],
-            (d.incomplete || []).map((x) => [
-              x.activityKey,
-              x.classId,
-              x.groupKey,
-              x.name,
-              (x.missingTargets || []).join(", ")
-            ])
+            (d.incomplete || []).map((x) => [x.activityKey, x.classId, x.groupKey, x.name, (x.missingTargets || []).join(", ")])
           );
       }
 
@@ -566,80 +557,52 @@
       function fillDataList(el, arr) {
         el.innerHTML = "";
         arr.forEach((item) => {
-          const o = document.createElement("option");
-          o.value = item.value || item;
-          if (item.label) o.label = item.label;
-          el.appendChild(o);
+          const option = document.createElement("option");
+          option.value = item.value || item;
+          if (item.label) option.label = item.label;
+          el.appendChild(option);
         });
       }
 
       function fillSelect(el, arr, label, all, keepValue) {
         const current = keepValue === undefined ? el.value : keepValue;
         el.innerHTML = "";
-        const op = document.createElement("option");
-        op.value = all ? "ALL" : "";
-        op.textContent = label;
-        el.appendChild(op);
+        const first = document.createElement("option");
+        first.value = all ? "ALL" : "";
+        first.textContent = label;
+        el.appendChild(first);
         arr.forEach((v) => {
-          const o = document.createElement("option");
-          o.value = v;
-          o.textContent = v;
-          el.appendChild(o);
+          const option = document.createElement("option");
+          option.value = v;
+          option.textContent = v;
+          el.appendChild(option);
         });
-        if (Array.from(el.options).some((o) => o.value === current)) {
-          el.value = current;
-        }
+        if (Array.from(el.options).some((option) => option.value === current)) el.value = current;
       }
 
       function rowsForFilters(filters) {
         const rows = (st.state.activities || []).concat(st.state.roster || []);
         return rows.filter((row) => {
-          return (
-            (!filters.classId || row.classId === filters.classId) &&
-            (!filters.activityKey || row.activityKey === filters.activityKey) &&
-            (!filters.groupKey || row.groupKey === filters.groupKey)
-          );
+          return (!filters.classId || row.classId === filters.classId) && (!filters.activityKey || row.activityKey === filters.activityKey) && (!filters.groupKey || row.groupKey === filters.groupKey);
         });
       }
 
       function valuesFor(field, filters) {
-        return Array.from(
-          new Set(
-            rowsForFilters(filters)
-              .map((row) => row[field])
-              .filter(Boolean)
-          )
-        ).sort();
+        return Array.from(new Set(rowsForFilters(filters).map((row) => row[field]).filter(Boolean))).sort();
       }
 
       function studentOptionsFor(filters) {
         return (st.state.roster || [])
           .filter((row) => {
-            return (
-              (!filters.classId || row.classId === filters.classId) &&
-              (!filters.activityKey ||
-                row.activityKey === filters.activityKey) &&
-              (!filters.groupKey || row.groupKey === filters.groupKey)
-            );
+            return (!filters.classId || row.classId === filters.classId) && (!filters.activityKey || row.activityKey === filters.activityKey) && (!filters.groupKey || row.groupKey === filters.groupKey);
           })
-          .map((row) => ({
-            value: row.studentId,
-            label: row.name ? row.studentId + " - " + row.name : row.studentId
-          }));
+          .map((row) => ({ value: row.studentId, label: row.name ? row.studentId + " - " + row.name : row.studentId }));
       }
 
       function updateCorrectionHints() {
         if (!st.state) return;
-        const filters = {
-          classId: norm(q("cc").value),
-          activityKey: norm(q("ca").value)
-        };
-        fillDataList(
-          q("groupOptions"),
-          filters.classId || filters.activityKey
-            ? valuesFor("groupKey", filters)
-            : (st.state.options && st.state.options.groups) || []
-        );
+        const filters = { classId: norm(q("cc").value), activityKey: norm(q("ca").value) };
+        fillDataList(q("groupOptions"), filters.classId || filters.activityKey ? valuesFor("groupKey", filters) : (st.state.options && st.state.options.groups) || []);
         fillDataList(q("studentOptions"), studentOptionsFor(filters));
       }
 
@@ -657,13 +620,7 @@
         const activities = valuesFor("activityKey", { classId });
         const groups = valuesFor("groupKey", { classId, activityKey });
         fillSelect(q("fc"), classes, "Select Class", false, classId);
-        fillSelect(
-          q("fa"),
-          activities,
-          "All Activities",
-          true,
-          activityKey || "ALL"
-        );
+        fillSelect(q("fa"), activities, "All Activities", true, activityKey || "ALL");
         fillSelect(q("fg"), groups, "All Groups", true, groupKey || "ALL");
       }
 
@@ -674,18 +631,8 @@
         if (!ak || !ci) return null;
         const rows = st.state.activities || [];
         return (
-          rows.find(
-            (x) =>
-              norm(x.activityKey) === ak &&
-              norm(x.classId) === ci &&
-              norm(x.groupKey) === gk
-          ) ||
-          rows.find(
-            (x) =>
-              norm(x.activityKey) === ak &&
-              norm(x.classId) === ci &&
-              norm(x.groupKey) === "ALL"
-          )
+          rows.find((x) => norm(x.activityKey) === ak && norm(x.classId) === ci && norm(x.groupKey) === gk) ||
+          rows.find((x) => norm(x.activityKey) === ak && norm(x.classId) === ci && norm(x.groupKey) === "ALL")
         );
       }
 
@@ -707,17 +654,7 @@
         const d = new Date(v);
         if (isNaN(d.getTime())) return "";
         const pad = (n) => String(n).padStart(2, "0");
-        return (
-          d.getFullYear() +
-          "-" +
-          pad(d.getMonth() + 1) +
-          "-" +
-          pad(d.getDate()) +
-          "T" +
-          pad(d.getHours()) +
-          ":" +
-          pad(d.getMinutes())
-        );
+        return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
       }
 
       function saveActivity() {
@@ -733,23 +670,22 @@
           evalOpen: q("aeo").value,
           evalClose: q("aec").value
         };
+        startFacultyLoading("Saving activity settings...");
         google.script.run
-          .withSuccessHandler((r) => done(r, "amsg"))
+          .withSuccessHandler((r) => {
+            stopFacultyLoading("Activity settings saved");
+            done(r, "amsg");
+          })
+          .withFailureHandler((e) => {
+            failFacultyLoading("Activity save failed");
+            failMsg("amsg", e);
+          })
           .saveActivitySettingsOptional(d, st.pin);
       }
 
       function defaultRubric() {
         q("rbRows").innerHTML = "";
-        DEF.forEach((x) =>
-          addRow({
-            id: x[0],
-            label: x[1],
-            maxScore: x[2],
-            weight: x[3],
-            required: x[4],
-            status: "Active"
-          })
-        );
+        DEF.forEach((x) => addRow({ id: x[0], label: x[1], maxScore: x[2], weight: x[3], required: x[4], status: "Active" }));
         totalWeight();
         updateRubricWarnings();
       }
@@ -795,9 +731,7 @@
       }
 
       function totalWeight() {
-        q("rbt").value = readRubric()
-          .reduce((s, x) => s + (Number(x.weight) || 0), 0)
-          .toFixed(2);
+        q("rbt").value = readRubric().reduce((s, x) => s + (Number(x.weight) || 0), 0).toFixed(2);
         updateRubricWarnings();
       }
 
@@ -808,35 +742,27 @@
         const total = rows.reduce((s, x) => s + (Number(x.weight) || 0), 0);
         rows.forEach((row) => {
           const id = norm(row.id || row.label);
-          if (!Number.isFinite(row.maxScore) || row.maxScore < 1) {
-            warnings.push(row.label + " needs a max score of at least 1.");
-          }
-          if (!Number.isFinite(row.weight) || row.weight < 0) {
-            warnings.push(row.label + " has an invalid weight.");
-          }
+          if (!Number.isFinite(row.maxScore) || row.maxScore < 1) warnings.push(row.label + " needs a max score of at least 1.");
+          if (!Number.isFinite(row.weight) || row.weight < 0) warnings.push(row.label + " has an invalid weight.");
           if (id) ids[id] = (ids[id] || 0) + 1;
         });
         Object.keys(ids).forEach((id) => {
           if (ids[id] > 1) warnings.push("Duplicate criterion ID: " + id + ".");
         });
-        if (rows.length && Math.abs(total - 100) > 0.01) {
-          warnings.push(
-            "Total rubric weight is " + total.toFixed(2) + ", not 100."
-          );
-        }
+        if (rows.length && Math.abs(total - 100) > 0.01) warnings.push("Total rubric weight is " + total.toFixed(2) + ", not 100.");
         return warnings;
       }
 
       function updateRubricWarnings() {
         const warnings = rubricWarnings();
-        const el = q("rbwarn");
+        const box = q("rbwarn");
         if (!warnings.length) {
-          el.classList.add("hide");
-          el.textContent = "";
+          box.classList.add("hide");
+          box.textContent = "";
           return;
         }
-        el.className = "msg warn";
-        el.textContent = warnings.join(" ");
+        box.className = "msg warn";
+        box.textContent = warnings.join(" ");
       }
 
       function normalizeWeights() {
@@ -855,95 +781,73 @@
       function loadRubric() {
         const ak = norm(q("rba").value);
         const ci = norm(q("rbc").value);
-        if (!ak || !ci)
-          return msg("rbmsg", "bad", "Enter Activity and Class first.");
-        const rows = (st.state.rubrics || []).filter(
-          (x) => norm(x.activityKey) === ak && norm(x.classId) === ci
-        );
+        if (!ak || !ci) return msg("rbmsg", "bad", "Enter Activity and Class first.");
+        const rows = (st.state.rubrics || []).filter((x) => norm(x.activityKey) === ak && norm(x.classId) === ci);
         q("rbRows").innerHTML = "";
         (rows.length
           ? rows
-          : DEF.map((x) => ({
-              criterionId: x[0],
-              label: x[1],
-              maxScore: x[2],
-              weight: x[3],
-              required: x[4],
-              status: "Active"
-            }))
-        ).forEach((x) =>
-          addRow({
-            id: x.criterionId || x.id,
-            label: x.label,
-            maxScore: x.maxScore,
-            weight: x.weight,
-            required: x.required,
-            status: x.status
-          })
-        );
-        msg(
-          "rbmsg",
-          "ok",
-          rows.length
-            ? "Existing rubric loaded."
-            : "No existing rubric found. Default loaded."
-        );
+          : DEF.map((x) => ({ criterionId: x[0], label: x[1], maxScore: x[2], weight: x[3], required: x[4], status: "Active" }))
+        ).forEach((x) => addRow({ id: x.criterionId || x.id, label: x.label, maxScore: x.maxScore, weight: x.weight, required: x.required, status: x.status }));
+        msg("rbmsg", "ok", rows.length ? "Existing rubric loaded." : "No existing rubric found. Default loaded.");
       }
 
       function saveRubric() {
         const criteria = readRubric();
-        if (!q("rba").value.trim() || !q("rbc").value.trim()) {
-          return msg("rbmsg", "bad", "Enter Activity and Class first.");
-        }
+        if (!q("rba").value.trim() || !q("rbc").value.trim()) return msg("rbmsg", "bad", "Enter Activity and Class first.");
         updateRubricWarnings();
+        startFacultyLoading("Saving rubric...");
         google.script.run
-          .withSuccessHandler((r) => done(r, "rbmsg"))
-          .saveRubric(
-            { activityKey: q("rba").value, classId: q("rbc").value, criteria },
-            st.pin
-          );
+          .withSuccessHandler((r) => {
+            stopFacultyLoading("Rubric saved");
+            done(r, "rbmsg");
+          })
+          .withFailureHandler((e) => {
+            failFacultyLoading("Rubric save failed");
+            failMsg("rbmsg", e);
+          })
+          .saveRubric({ activityKey: q("rba").value, classId: q("rbc").value, criteria }, st.pin);
       }
 
       function moveGroup() {
+        startFacultyLoading("Moving student to group...");
         google.script.run
-          .withSuccessHandler((r) => done(r, "cmsg"))
-          .moveStudentToGroup(
-            {
-              activityKey: q("ca").value,
-              classId: q("cc").value,
-              studentId: q("cs").value,
-              newGroupKey: q("cg").value
-            },
-            st.pin
-          );
+          .withSuccessHandler((r) => {
+            stopFacultyLoading("Group updated");
+            done(r, "cmsg");
+          })
+          .withFailureHandler((e) => {
+            failFacultyLoading("Group update failed");
+            failMsg("cmsg", e);
+          })
+          .moveStudentToGroup({ activityKey: q("ca").value, classId: q("cc").value, studentId: q("cs").value, newGroupKey: q("cg").value }, st.pin);
       }
 
       function updContrib() {
+        startFacultyLoading("Updating contribution...");
         google.script.run
-          .withSuccessHandler((r) => done(r, "cmsg"))
-          .updateStudentContribution(
-            {
-              activityKey: q("ca").value,
-              classId: q("cc").value,
-              studentId: q("cs").value,
-              contribution: q("cco").value
-            },
-            st.pin
-          );
+          .withSuccessHandler((r) => {
+            stopFacultyLoading("Contribution updated");
+            done(r, "cmsg");
+          })
+          .withFailureHandler((e) => {
+            failFacultyLoading("Contribution update failed");
+            failMsg("cmsg", e);
+          })
+          .updateStudentContribution({ activityKey: q("ca").value, classId: q("cc").value, studentId: q("cs").value, contribution: q("cco").value }, st.pin);
       }
 
       function setStatus() {
+        startFacultyLoading("Updating registration status...");
         google.script.run
-          .withSuccessHandler((r) => done(r, "cmsg"))
-          .setRegistrationStatus(
-            {
-              activityKey: q("ca").value,
-              classId: q("cc").value,
-              studentId: q("cs").value,
-              status: q("cst").value
-            },
-            st.pin
-          );
+          .withSuccessHandler((r) => {
+            stopFacultyLoading("Status updated");
+            done(r, "cmsg");
+          })
+          .withFailureHandler((e) => {
+            failFacultyLoading("Status update failed");
+            failMsg("cmsg", e);
+          })
+          .setRegistrationStatus({ activityKey: q("ca").value, classId: q("cc").value, studentId: q("cs").value, status: q("cst").value }, st.pin);
       }
 
       function done(r, id) {
@@ -957,26 +861,32 @@
       }
 
       function cleanupRegs() {
-        if (
-          !confirm(
-            "Deactivate extra active duplicate registrations and keep the first row for each student?"
-          )
-        )
-          return;
+        if (!confirm("Deactivate extra active duplicate registrations and keep the first row for each student?")) return;
+        startFacultyLoading("Cleaning duplicate registrations...");
         google.script.run
-          .withSuccessHandler((r) => done(r, "dmsg"))
+          .withSuccessHandler((r) => {
+            stopFacultyLoading("Duplicate registration cleanup complete");
+            done(r, "dmsg");
+          })
+          .withFailureHandler((e) => {
+            failFacultyLoading("Duplicate registration cleanup failed");
+            failMsg("dmsg", e);
+          })
           .cleanupDuplicateRegistrations(st.pin);
       }
 
       function cleanupEvals() {
-        if (
-          !confirm(
-            "Remove extra duplicate evaluations and keep the first submission for each evaluator-target pair?"
-          )
-        )
-          return;
+        if (!confirm("Remove extra duplicate evaluations and keep the first submission for each evaluator-target pair?")) return;
+        startFacultyLoading("Cleaning duplicate evaluations...");
         google.script.run
-          .withSuccessHandler((r) => done(r, "dmsg"))
+          .withSuccessHandler((r) => {
+            stopFacultyLoading("Duplicate evaluation cleanup complete");
+            done(r, "dmsg");
+          })
+          .withFailureHandler((e) => {
+            failFacultyLoading("Duplicate evaluation cleanup failed");
+            failMsg("dmsg", e);
+          })
           .cleanupDuplicateEvaluations(st.pin);
       }
 
@@ -987,46 +897,31 @@
           table(
             "Duplicate Registrations",
             ["Activity", "Class", "Student", "Name", "Rows", "Groups"],
-            (d.registrations || []).map((x) => [
-              x.activityKey,
-              x.classId,
-              x.studentId,
-              x.name,
-              x.count,
-              (x.groups || []).join(", ")
-            ])
+            (d.registrations || []).map((x) => [x.activityKey, x.classId, x.studentId, x.name, x.count, (x.groups || []).join(", ")])
           ) +
           table(
             "Duplicate Evaluations",
             ["Activity", "Class", "Group", "Evaluator", "Target", "Rows"],
-            (d.evaluations || []).map((x) => [
-              x.activityKey,
-              x.classId,
-              x.groupKey,
-              x.evaluatorName + " (" + x.evaluatorStudentId + ")",
-              x.targetName + " (" + x.targetStudentId + ")",
-              x.count
-            ])
+            (d.evaluations || []).map((x) => [x.activityKey, x.classId, x.groupKey, x.evaluatorName + " (" + x.evaluatorStudentId + ")", x.targetName + " (" + x.targetStudentId + ")", x.count])
           );
       }
 
       function generateReport() {
+        startFacultyLoading("Generating report...");
         google.script.run
           .withSuccessHandler((r) => {
+            stopFacultyLoading(r.success ? "Report generated" : "Report request complete");
             if (!r.success) {
               q("out").textContent = r.message;
               return;
             }
             report(r);
           })
-          .generateReportData(
-            {
-              classId: q("fc").value,
-              activityKey: q("fa").value,
-              groupKey: q("fg").value
-            },
-            st.pin
-          );
+          .withFailureHandler((e) => {
+            failFacultyLoading("Report generation failed");
+            q("out").textContent = e && e.message ? e.message : String(e);
+          })
+          .generateReportData({ classId: q("fc").value, activityKey: q("fa").value, groupKey: q("fg").value }, st.pin);
       }
 
       function report(r) {
@@ -1044,117 +939,36 @@
           card("Cohorts", r.totals.cohorts) +
           card("Submitted", r.totals.submittedEvaluations) +
           card("Expected", r.totals.expectedEvaluations) +
-          card(
-            "Avg %",
-            r.totals.averagePercent == null ? EMPTY : r.totals.averagePercent
-          ) +
+          card("Avg %", r.totals.averagePercent == null ? EMPTY : r.totals.averagePercent) +
           "</div>" +
           table(
             "Cohorts",
-            [
-              "Activity",
-              "Class",
-              "Group",
-              "Members",
-              "Submitted",
-              "Expected",
-              "Completion",
-              "Avg %"
-            ],
-            r.cohorts.map((x) => [
-              x.activityKey,
-              x.classId,
-              x.groupKey,
-              x.memberCount,
-              x.submittedEvaluations,
-              x.expectedEvaluations,
-              x.completionPercent + "%",
-              x.averagePercent == null ? EMPTY : x.averagePercent
-            ])
+            ["Activity", "Class", "Group", "Members", "Submitted", "Expected", "Completion", "Avg %"],
+            r.cohorts.map((x) => [x.activityKey, x.classId, x.groupKey, x.memberCount, x.submittedEvaluations, x.expectedEvaluations, x.completionPercent + "%", x.averagePercent == null ? EMPTY : x.averagePercent])
           ) +
           table(
             "Student Summary",
-            [
-              "Activity",
-              "Group",
-              "Student",
-              "Received",
-              "Expected",
-              "Avg %",
-              "Missing Evaluators"
-            ],
-            r.summary.map((x) => [
-              x.activityKey,
-              x.groupKey,
-              x.name + " (" + x.studentId + ")",
-              x.receivedCount,
-              x.expectedCount,
-              x.averagePercent == null ? EMPTY : x.averagePercent,
-              (x.missingEvaluators || []).join(", ")
-            ])
+            ["Activity", "Group", "Student", "Received", "Expected", "Avg %", "Missing Evaluators"],
+            r.summary.map((x) => [x.activityKey, x.groupKey, x.name + " (" + x.studentId + ")", x.receivedCount, x.expectedCount, x.averagePercent == null ? EMPTY : x.averagePercent, (x.missingEvaluators || []).join(", ")])
           ) +
           table(
             "Completion",
-            [
-              "Activity",
-              "Group",
-              "Evaluator",
-              "Submitted",
-              "Expected",
-              "Missing Targets"
-            ],
-            r.completion.map((x) => [
-              x.activityKey,
-              x.groupKey,
-              x.name + " (" + x.studentId + ")",
-              x.submittedCount,
-              x.expectedCount,
-              (x.missingTargets || []).join(", ")
-            ])
+            ["Activity", "Group", "Evaluator", "Submitted", "Expected", "Missing Targets"],
+            r.completion.map((x) => [x.activityKey, x.groupKey, x.name + " (" + x.studentId + ")", x.submittedCount, x.expectedCount, (x.missingTargets || []).join(", ")])
           ) +
           table(
             "Logs",
-            [
-              "Time",
-              "Activity",
-              "Group",
-              "Target",
-              "Evaluator",
-              "Weighted %",
-              "Comments"
-            ],
-            r.details.map((x) => [
-              x.timestamp,
-              x.activityKey,
-              x.groupKey,
-              x.targetName,
-              x.evaluatorName,
-              x.weightedPercent,
-              x.comments
-            ])
+            ["Time", "Activity", "Group", "Target", "Evaluator", "Weighted %", "Comments"],
+            r.details.map((x) => [x.timestamp, x.activityKey, x.groupKey, x.targetName, x.evaluatorName, x.weightedPercent, x.comments])
           );
       }
 
       function table(title, heads, rows) {
-        let h =
-          "<h2>" +
-          esc(title) +
-          "</h2><table><tr>" +
-          heads.map((x) => "<th>" + esc(x) + "</th>").join("") +
-          "</tr>";
+        const h = "<h2>" + esc(title) + "</h2><table><tr>" + heads.map((x) => "<th>" + esc(x) + "</th>").join("") + "</tr>";
         return (
           h +
           (rows.length
-            ? rows
-                .map(
-                  (r) =>
-                    "<tr>" +
-                    r
-                      .map((c) => "<td>" + esc(c == null ? "" : c) + "</td>")
-                      .join("") +
-                    "</tr>"
-                )
-                .join("")
+            ? rows.map((r) => "<tr>" + r.map((c) => "<td>" + esc(c == null ? "" : c) + "</td>").join("") + "</tr>").join("")
             : '<tr><td colspan="' + heads.length + '">No rows</td></tr>') +
           "</table>"
         );
