@@ -212,6 +212,30 @@
         align-items: center;
       }
 
+      .report-title {
+        margin: 0 0 6px;
+      }
+
+      .report-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 10px;
+        color: var(--muted);
+      }
+
+      .report-meta span {
+        padding: 4px 7px;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 999px;
+      }
+
+      .report-section {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
       table {
         width: 100%;
         margin: 10px 0;
@@ -240,6 +264,220 @@
         }
       }
 
+      @page {
+        size: A4 landscape;
+        margin: 8mm;
+      }
+
+      @media print {
+        * {
+          box-shadow: none !important;
+          text-shadow: none !important;
+        }
+
+        html,
+        body {
+          width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          color: #111827 !important;
+          background: #fff !important;
+          font-size: 9pt;
+          line-height: 1.2;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        body * {
+          visibility: hidden;
+        }
+
+        #out,
+        #out * {
+          visibility: visible;
+        }
+
+        #out {
+          position: absolute;
+          inset: 0 auto auto 0;
+          width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: visible !important;
+          color: #111827 !important;
+          background: #fff !important;
+          border: 0 !important;
+          border-radius: 0 !important;
+        }
+
+        .box,
+        .panel {
+          max-width: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #fff !important;
+          border: 0 !important;
+          border-radius: 0 !important;
+        }
+
+        .nav,
+        #pinPanel,
+        #app,
+        #facultyLoading,
+        .loading-panel,
+        button,
+        input,
+        select,
+        textarea {
+          display: none !important;
+        }
+
+        #out h1,
+        #out .report-title {
+          margin: 0 0 3mm !important;
+          color: #0f172a !important;
+          font-size: 15pt !important;
+          line-height: 1.1 !important;
+        }
+
+        #out h2 {
+          margin: 3.5mm 0 1.5mm !important;
+          color: #0f172a !important;
+          font-size: 10pt !important;
+          line-height: 1.1 !important;
+          break-after: avoid;
+          page-break-after: avoid;
+        }
+
+        #out p,
+        #out .report-meta {
+          margin: 0 0 2mm !important;
+          color: #334155 !important;
+          font-size: 8pt !important;
+        }
+
+        #out .report-meta {
+          display: grid !important;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 1.5mm;
+        }
+
+        #out .report-meta span {
+          padding: 1mm 1.5mm !important;
+          color: #111827 !important;
+          background: #f8fafc !important;
+          border: 0.2mm solid #cbd5e1 !important;
+          border-radius: 1.5mm !important;
+          overflow-wrap: anywhere;
+        }
+
+        #out .cards {
+          display: grid !important;
+          grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+          gap: 1.5mm !important;
+          margin: 0 0 2mm !important;
+        }
+
+        #out .card {
+          min-height: 0 !important;
+          padding: 1.5mm !important;
+          color: #111827 !important;
+          background: #eef2ff !important;
+          border: 0.2mm solid #c7d2fe !important;
+          border-radius: 1.5mm !important;
+          overflow-wrap: anywhere;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+
+        #out .card small {
+          display: block;
+          margin-bottom: 0.5mm;
+          font-size: 7pt !important;
+        }
+
+        #out .card b {
+          font-size: 9pt !important;
+        }
+
+        #out .report-section {
+          margin: 0 0 2mm !important;
+          break-inside: auto;
+          page-break-inside: auto;
+        }
+
+        #out table {
+          width: 100% !important;
+          table-layout: fixed !important;
+          margin: 0 0 2mm !important;
+          border-collapse: collapse !important;
+          font-size: 7.6pt !important;
+          line-height: 1.12 !important;
+          break-inside: auto;
+          page-break-inside: auto;
+        }
+
+        #out .report-table-logs,
+        #out .report-table-cohorts,
+        #out .report-table-student-summary {
+          font-size: 7.1pt !important;
+        }
+
+        #out thead {
+          display: table-header-group;
+        }
+
+        #out tr {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+
+        #out th,
+        #out td {
+          padding: 1mm 1.2mm !important;
+          color: #111827 !important;
+          border: 0.2mm solid #cbd5e1 !important;
+          overflow-wrap: anywhere !important;
+          word-break: break-word !important;
+          white-space: normal !important;
+          vertical-align: top !important;
+        }
+
+        #out th {
+          color: #fff !important;
+          background: #1e293b !important;
+          font-weight: 700 !important;
+        }
+
+        #out .report-table-cohorts th:nth-child(4),
+        #out .report-table-cohorts td:nth-child(4),
+        #out .report-table-cohorts th:nth-child(5),
+        #out .report-table-cohorts td:nth-child(5),
+        #out .report-table-cohorts th:nth-child(6),
+        #out .report-table-cohorts td:nth-child(6),
+        #out .report-table-cohorts th:nth-child(7),
+        #out .report-table-cohorts td:nth-child(7),
+        #out .report-table-cohorts th:nth-child(8),
+        #out .report-table-cohorts td:nth-child(8) {
+          width: 9%;
+          text-align: center;
+        }
+
+        #out .report-table-logs th:nth-child(1),
+        #out .report-table-logs td:nth-child(1) {
+          width: 13%;
+        }
+
+        #out .report-table-logs th:nth-child(7),
+        #out .report-table-logs td:nth-child(7) {
+          width: 23%;
+        }
+
+        a[href]::after {
+          content: "" !important;
+        }
+      }
+
       @media (max-width: 850px) {
         .grid,
         .cards {
@@ -264,25 +502,12 @@
     <div class="box" aria-busy="false">
       <h1>Faculty Dashboard</h1>
 
-      <div
-        id="facultyLoading"
-        class="loading-panel hide"
-        role="status"
-        aria-live="polite"
-        aria-hidden="true"
-      >
+      <div id="facultyLoading" class="loading-panel hide" role="status" aria-live="polite" aria-hidden="true">
         <div class="loading-head">
           <span id="facultyLoadingText">Processing...</span>
           <span id="facultyLoadingPercent">0%</span>
         </div>
-        <div
-          class="loading-track"
-          role="progressbar"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          aria-valuenow="0"
-          aria-label="Faculty process progress"
-        >
+        <div class="loading-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Faculty process progress">
           <div id="facultyLoadingFill" class="loading-fill"></div>
         </div>
       </div>
@@ -303,7 +528,7 @@
           <button type="button" onclick="show('dup')">Duplicates</button>
           <button type="button" onclick="show('rep')">Report</button>
           <button type="button" class="sec" onclick="unlock()">Refresh</button>
-          <button type="button" class="sec" onclick="window.print()">Print</button>
+          <button type="button" class="sec" onclick="printReport()">Print Report</button>
         </div>
 
         <datalist id="activityOptions"></datalist>
@@ -315,9 +540,7 @@
 
         <section id="act" class="panel hide">
           <h2>Activity Settings</h2>
-          <p class="muted">
-            Group is optional. Blank group settings apply to all groups in the selected activity and class.
-          </p>
+          <p class="muted">Group is optional. Blank group settings apply to all groups in the selected activity and class.</p>
           <div class="grid">
             <p><label for="aa">Activity</label><input id="aa" list="activityOptions" oninput="applyExistingActivity()" /></p>
             <p><label for="an">Name</label><input id="an" /></p>
@@ -349,11 +572,7 @@
           <div id="rbwarn" class="msg warn hide"></div>
           <div class="scroll">
             <table class="rubric">
-              <thead>
-                <tr>
-                  <th>ID</th><th>Label</th><th>Max</th><th>Weight</th><th>Required</th><th>Status</th><th>Action</th>
-                </tr>
-              </thead>
+              <thead><tr><th>ID</th><th>Label</th><th>Max</th><th>Weight</th><th>Required</th><th>Status</th><th>Action</th></tr></thead>
               <tbody id="rbRows"></tbody>
             </table>
           </div>
@@ -378,9 +597,7 @@
 
         <section id="dup" class="panel hide">
           <h2>Duplicate Cleanup</h2>
-          <p class="muted">
-            Duplicate registrations keep the first active row and deactivate extras. Duplicate evaluations keep the first submission and remove extras.
-          </p>
+          <p class="muted">Duplicate registrations keep the first active row and deactivate extras. Duplicate evaluations keep the first submission and remove extras.</p>
           <div class="toolbar">
             <button type="button" onclick="cleanupRegs()">Deactivate Duplicate Registrations</button>
             <button type="button" class="danger" onclick="cleanupEvals()">Remove Duplicate Evaluations</button>
@@ -497,6 +714,16 @@
         msg(id, "bad", e && e.message ? e.message : String(e));
       }
 
+      function printReport() {
+        const hasReport = q("out").querySelector(".print-report");
+        if (!hasReport) {
+          q("out").textContent = "Generate a report first, then print.";
+          show("rep");
+          return;
+        }
+        window.print();
+      }
+
       function unlock() {
         st.pin = q("pin").value || st.pin;
         startFacultyLoading("Unlocking dashboard...");
@@ -511,6 +738,7 @@
             filters();
             renderDuplicates();
             if (!q("rbRows").children.length) defaultRubric();
+            q("out").classList.remove("report-panel");
             q("out").textContent = "Unlocked.";
           })
           .withFailureHandler((e) => {
@@ -784,10 +1012,7 @@
         if (!ak || !ci) return msg("rbmsg", "bad", "Enter Activity and Class first.");
         const rows = (st.state.rubrics || []).filter((x) => norm(x.activityKey) === ak && norm(x.classId) === ci);
         q("rbRows").innerHTML = "";
-        (rows.length
-          ? rows
-          : DEF.map((x) => ({ criterionId: x[0], label: x[1], maxScore: x[2], weight: x[3], required: x[4], status: "Active" }))
-        ).forEach((x) => addRow({ id: x.criterionId || x.id, label: x.label, maxScore: x.maxScore, weight: x.weight, required: x.required, status: x.status }));
+        (rows.length ? rows : DEF.map((x) => ({ criterionId: x[0], label: x[1], maxScore: x[2], weight: x[3], required: x[4], status: "Active" }))).forEach((x) => addRow({ id: x.criterionId || x.id, label: x.label, maxScore: x.maxScore, weight: x.weight, required: x.required, status: x.status }));
         msg("rbmsg", "ok", rows.length ? "Existing rubric loaded." : "No existing rubric found. Default loaded.");
       }
 
@@ -912,6 +1137,7 @@
           .withSuccessHandler((r) => {
             stopFacultyLoading(r.success ? "Report generated" : "Report request complete");
             if (!r.success) {
+              q("out").classList.remove("report-panel");
               q("out").textContent = r.message;
               return;
             }
@@ -919,22 +1145,28 @@
           })
           .withFailureHandler((e) => {
             failFacultyLoading("Report generation failed");
+            q("out").classList.remove("report-panel");
             q("out").textContent = e && e.message ? e.message : String(e);
           })
           .generateReportData({ classId: q("fc").value, activityKey: q("fa").value, groupKey: q("fg").value }, st.pin);
       }
 
       function report(r) {
+        q("out").classList.add("report-panel");
         q("out").innerHTML =
-          "<h1>Report: Class " +
+          '<div class="print-report">' +
+          '<h1 class="report-title">Group Report: Class ' +
           esc(r.filters.classId) +
-          "</h1><p>Activity: " +
+          "</h1>" +
+          '<div class="report-meta">' +
+          "<span><b>Activity:</b> " +
           esc(r.filters.activityKey) +
-          " | Group: " +
+          "</span><span><b>Group:</b> " +
           esc(r.filters.groupKey) +
-          " | Generated: " +
+          "</span><span><b>Generated:</b> " +
           esc(r.generatedAt) +
-          '</p><div class="cards">' +
+          "</span><span><b>Print:</b> Landscape A4</span></div>" +
+          '<div class="cards">' +
           card("Students", r.totals.registeredStudents) +
           card("Cohorts", r.totals.cohorts) +
           card("Submitted", r.totals.submittedEvaluations) +
@@ -960,17 +1192,35 @@
             "Logs",
             ["Time", "Activity", "Group", "Target", "Evaluator", "Weighted %", "Comments"],
             r.details.map((x) => [x.timestamp, x.activityKey, x.groupKey, x.targetName, x.evaluatorName, x.weightedPercent, x.comments])
-          );
+          ) +
+          "</div>";
+      }
+
+      function slug(s) {
+        return String(s || "table")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "") || "table";
       }
 
       function table(title, heads, rows) {
-        const h = "<h2>" + esc(title) + "</h2><table><tr>" + heads.map((x) => "<th>" + esc(x) + "</th>").join("") + "</tr>";
+        const key = slug(title);
+        const h =
+          '<section class="report-section report-section-' +
+          key +
+          '"><h2>' +
+          esc(title) +
+          '</h2><table class="report-table report-table-' +
+          key +
+          '"><thead><tr>' +
+          heads.map((x) => "<th>" + esc(x) + "</th>").join("") +
+          "</tr></thead><tbody>";
         return (
           h +
           (rows.length
             ? rows.map((r) => "<tr>" + r.map((c) => "<td>" + esc(c == null ? "" : c) + "</td>").join("") + "</tr>").join("")
             : '<tr><td colspan="' + heads.length + '">No rows</td></tr>') +
-          "</table>"
+          "</tbody></table></section>"
         );
       }
     </script>
