@@ -41,6 +41,10 @@
           sans-serif;
       }
 
+      body.is-busy {
+        cursor: wait;
+      }
+
       .shell {
         width: min(960px, calc(100% - 32px));
         margin: 0 auto;
@@ -218,8 +222,42 @@
       }
 
       button:disabled {
-        cursor: default;
+        cursor: not-allowed;
         background: #94a3b8;
+      }
+
+      .loading-panel {
+        margin: 0 0 18px;
+        padding: 13px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        box-shadow: inset 0 1px 0 #ffffff80;
+      }
+
+      .loading-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+        color: #1e3a8a;
+        font-size: 0.9rem;
+        font-weight: 800;
+      }
+
+      .loading-track {
+        height: 12px;
+        overflow: hidden;
+        background: #dbeafe;
+        border-radius: 999px;
+      }
+
+      .loading-fill {
+        width: 0%;
+        height: 100%;
+        background: var(--primary);
+        border-radius: inherit;
+        transition: width 0.2s ease;
       }
 
       .msg {
@@ -352,24 +390,30 @@
         display: none !important;
       }
 
+      @media (prefers-reduced-motion: reduce) {
+        .loading-fill {
+          transition: none;
+        }
+      }
+
       @media (max-width: 760px) {
         .shell {
           width: min(100% - 20px, 960px);
           padding-top: 10px;
         }
 
-        .hero {
+        .hero,
+        .grid,
+        .summary {
           grid-template-columns: 1fr;
+        }
+
+        .hero {
           padding: 22px;
         }
 
         .content {
           padding: 20px;
-        }
-
-        .grid,
-        .summary {
-          grid-template-columns: 1fr;
         }
 
         .section-head {
@@ -402,6 +446,29 @@
           <datalist id="studentClassOptions"></datalist>
           <datalist id="studentGroupOptions"></datalist>
 
+          <div
+            id="studentLoading"
+            class="loading-panel hide"
+            role="status"
+            aria-live="polite"
+            aria-hidden="true"
+          >
+            <div class="loading-head">
+              <span id="studentLoadingText">Processing...</span>
+              <span id="studentLoadingPercent">0%</span>
+            </div>
+            <div
+              class="loading-track"
+              role="progressbar"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="0"
+              aria-label="Processing progress"
+            >
+              <div id="studentLoadingFill" class="loading-fill"></div>
+            </div>
+          </div>
+
           <div class="tabs" role="tablist" aria-label="Peer evaluation steps">
             <button
               id="tReg"
@@ -429,53 +496,26 @@
             <div class="section-head">
               <div>
                 <h2>Register</h2>
-                <p>
-                  Use the activity, class, and group provided by your teacher.
-                </p>
+                <p>Use the activity, class, and group provided by your teacher.</p>
               </div>
             </div>
 
-            <form
-              onsubmit="
-                event.preventDefault();
-                registerMe();
-              "
-            >
+            <form onsubmit="event.preventDefault(); registerMe();">
               <div class="grid">
                 <p class="field">
                   <label for="ra">Activity Key / Name</label>
-                  <input
-                    id="ra"
-                    class="ucase"
-                    list="studentActivityOptions"
-                    autocomplete="off"
-                    oninput="updateStudentHintLists()"
-                    required
-                  />
+                  <input id="ra" class="ucase" list="studentActivityOptions" autocomplete="off" oninput="updateStudentHintLists()" required />
                 </p>
                 <p class="field">
                   <label for="rc">Class ID</label>
-                  <input
-                    id="rc"
-                    class="ucase"
-                    list="studentClassOptions"
-                    autocomplete="off"
-                    oninput="updateStudentHintLists()"
-                    required
-                  />
+                  <input id="rc" class="ucase" list="studentClassOptions" autocomplete="off" oninput="updateStudentHintLists()" required />
                 </p>
               </div>
 
               <div class="grid">
                 <p class="field">
                   <label for="rg">Group Key</label>
-                  <input
-                    id="rg"
-                    class="ucase"
-                    list="studentGroupOptions"
-                    autocomplete="off"
-                    required
-                  />
+                  <input id="rg" class="ucase" list="studentGroupOptions" autocomplete="off" required />
                 </p>
                 <p class="field">
                   <label for="rs">Student ID</label>
@@ -501,26 +541,17 @@
 
               <div class="actions">
                 <button id="rb" type="submit">Register</button>
-                <span class="hint"
-                  >You can proceed to evaluation after registration.</span
-                >
+                <span class="hint">You can proceed to evaluation after registration.</span>
               </div>
               <div id="rmsg" class="msg hide"></div>
             </form>
           </section>
 
-          <section
-            id="evalPage"
-            class="hide"
-            role="tabpanel"
-            aria-labelledby="tEval"
-          >
+          <section id="evalPage" class="hide" role="tabpanel" aria-labelledby="tEval">
             <div class="section-head">
               <div>
                 <h2>Evaluate</h2>
-                <p>
-                  Verify your registration to load your remaining teammates.
-                </p>
+                <p>Verify your registration to load your remaining teammates.</p>
               </div>
             </div>
 
@@ -528,25 +559,11 @@
               <div class="grid">
                 <p class="field">
                   <label for="ea">Activity</label>
-                  <input
-                    id="ea"
-                    class="ucase"
-                    list="studentActivityOptions"
-                    autocomplete="off"
-                    oninput="updateStudentHintLists()"
-                    required
-                  />
+                  <input id="ea" class="ucase" list="studentActivityOptions" autocomplete="off" oninput="updateStudentHintLists()" required />
                 </p>
                 <p class="field">
                   <label for="ec">Class ID</label>
-                  <input
-                    id="ec"
-                    class="ucase"
-                    list="studentClassOptions"
-                    autocomplete="off"
-                    oninput="updateStudentHintLists()"
-                    required
-                  />
+                  <input id="ec" class="ucase" list="studentClassOptions" autocomplete="off" oninput="updateStudentHintLists()" required />
                 </p>
               </div>
               <p class="field">
@@ -554,34 +571,16 @@
                 <input id="es" class="ucase" autocomplete="off" required />
               </p>
               <div class="actions">
-                <button id="vb" type="button" onclick="verify()">
-                  Verify & Load Group
-                </button>
+                <button id="vb" type="button" onclick="verify()">Verify & Load Group</button>
               </div>
               <div id="vmsg" class="msg hide"></div>
             </div>
 
-            <form
-              id="ef"
-              class="hide"
-              onsubmit="
-                event.preventDefault();
-                submitEval();
-              "
-            >
+            <form id="ef" class="hide" onsubmit="event.preventDefault(); submitEval();">
               <div class="summary">
-                <div>
-                  <span>Evaluator</span>
-                  <b id="who"></b>
-                </div>
-                <div>
-                  <span>Activity / Class / Group</span>
-                  <b id="ctx"></b>
-                </div>
-                <div>
-                  <span>Progress</span>
-                  <b id="prog"></b>
-                </div>
+                <div><span>Evaluator</span><b id="who"></b></div>
+                <div><span>Activity / Class / Group</span><b id="ctx"></b></div>
+                <div><span>Progress</span><b id="prog"></b></div>
               </div>
 
               <p class="field">
@@ -616,16 +615,12 @@
     <script>
       const st = { evaluator: null, targets: [], rubric: [], scores: {} };
       const hints = { activities: [], classes: [], groups: [], cohorts: [] };
+      const loading = { timer: null, percent: 0 };
 
       window.addEventListener("load", loadStudentHints);
 
       function loadStudentHints() {
-        if (
-          typeof google === "undefined" ||
-          !google.script ||
-          !google.script.run
-        )
-          return;
+        if (typeof google === "undefined" || !google.script || !google.script.run) return;
         google.script.run
           .withSuccessHandler((r) => {
             if (!r || !r.success) return;
@@ -639,69 +634,110 @@
       }
 
       function fillHintList(id, values) {
-        const el = document.getElementById(id);
-        el.innerHTML = "";
+        const list = el(id);
+        list.innerHTML = "";
         values.forEach((value) => {
           const option = document.createElement("option");
           option.value = value;
-          el.appendChild(option);
+          list.appendChild(option);
         });
       }
 
       function norm(s) {
-        return String(s || "")
-          .trim()
-          .toUpperCase();
+        return String(s || "").trim().toUpperCase();
       }
 
       function updateStudentHintLists() {
         const activity = norm(el("ra").value || el("ea").value);
         const classId = norm(el("rc").value || el("ec").value);
         const matching = hints.cohorts.filter((c) => {
-          return (
-            (!activity || c.activityKey === activity) &&
-            (!classId || c.classId === classId)
-          );
+          return (!activity || c.activityKey === activity) && (!classId || c.classId === classId);
         });
         fillHintList("studentActivityOptions", hints.activities);
         fillHintList("studentClassOptions", hints.classes);
         fillHintList(
           "studentGroupOptions",
-          matching.length
-            ? Array.from(new Set(matching.map((c) => c.groupKey))).sort()
-            : hints.groups
+          matching.length ? Array.from(new Set(matching.map((c) => c.groupKey))).sort() : hints.groups
         );
       }
 
       function tab(x) {
         const isReg = x === "reg";
-        document.getElementById("reg").classList.toggle("hide", !isReg);
-        document.getElementById("evalPage").classList.toggle("hide", isReg);
-        document.getElementById("tReg").classList.toggle("on", isReg);
-        document.getElementById("tEval").classList.toggle("on", !isReg);
-        document
-          .getElementById("tReg")
-          .setAttribute("aria-selected", String(isReg));
-        document
-          .getElementById("tEval")
-          .setAttribute("aria-selected", String(!isReg));
+        el("reg").classList.toggle("hide", !isReg);
+        el("evalPage").classList.toggle("hide", isReg);
+        el("tReg").classList.toggle("on", isReg);
+        el("tEval").classList.toggle("on", !isReg);
+        el("tReg").setAttribute("aria-selected", String(isReg));
+        el("tEval").setAttribute("aria-selected", String(!isReg));
       }
 
       function msg(id, type, text) {
-        const e = document.getElementById(id);
-        e.className = "msg " + type;
-        e.textContent = text;
-        e.classList.remove("hide");
+        const box = el(id);
+        box.className = "msg " + type;
+        box.textContent = text;
+        box.classList.remove("hide");
       }
 
       function busy(id, on, text) {
-        const b = document.getElementById(id);
-        b.disabled = on;
-        b.textContent = text;
+        const button = el(id);
+        button.disabled = on;
+        button.textContent = text;
       }
 
       function el(id) {
         return document.getElementById(id);
+      }
+
+      function setStudentControlsLocked(on) {
+        document.body.classList.toggle("is-busy", on);
+        document.querySelectorAll("button, input, select, textarea").forEach((control) => {
+          if (on) {
+            control.dataset.wasDisabled = control.disabled ? "true" : "false";
+            control.disabled = true;
+          } else {
+            if (control.dataset.wasDisabled !== "true") control.disabled = false;
+            delete control.dataset.wasDisabled;
+          }
+        });
+      }
+
+      function setStudentProgress(percent, text) {
+        loading.percent = Math.max(0, Math.min(100, Math.round(percent)));
+        if (text) el("studentLoadingText").textContent = text;
+        el("studentLoadingPercent").textContent = loading.percent + "%";
+        el("studentLoadingFill").style.width = loading.percent + "%";
+        document.querySelector("#studentLoading .loading-track").setAttribute("aria-valuenow", String(loading.percent));
+      }
+
+      function startStudentLoading(text) {
+        clearInterval(loading.timer);
+        el("studentLoading").classList.remove("hide");
+        el("studentLoading").setAttribute("aria-hidden", "false");
+        setStudentControlsLocked(true);
+        setStudentProgress(8, text || "Processing...");
+        loading.timer = setInterval(() => {
+          if (loading.percent < 94) setStudentProgress(loading.percent + Math.max(1, Math.ceil((94 - loading.percent) * 0.18)));
+        }, 260);
+      }
+
+      function stopStudentLoading(text) {
+        clearInterval(loading.timer);
+        setStudentProgress(100, text || "Complete");
+        setTimeout(() => {
+          el("studentLoading").classList.add("hide");
+          el("studentLoading").setAttribute("aria-hidden", "true");
+          setStudentControlsLocked(false);
+        }, 350);
+      }
+
+      function failStudentLoading(text) {
+        clearInterval(loading.timer);
+        setStudentProgress(100, text || "Unable to complete request");
+        setTimeout(() => {
+          el("studentLoading").classList.add("hide");
+          el("studentLoading").setAttribute("aria-hidden", "true");
+          setStudentControlsLocked(false);
+        }, 550);
       }
 
       function registerMe() {
@@ -715,9 +751,11 @@
           contribution: el("rco").value
         };
         busy("rb", true, "Saving...");
+        startStudentLoading("Saving registration...");
         google.script.run
           .withSuccessHandler((r) => {
             busy("rb", false, "Register");
+            stopStudentLoading("Registration complete");
             msg("rmsg", r.success ? "ok" : "bad", r.message);
             if (r.success) {
               el("ea").value = d.activityKey;
@@ -729,6 +767,7 @@
           })
           .withFailureHandler((e) => {
             busy("rb", false, "Register");
+            failStudentLoading("Registration failed");
             msg("rmsg", "bad", e.message || String(e));
           })
           .saveRegistration(d);
@@ -736,9 +775,11 @@
 
       function verify() {
         busy("vb", true, "Loading...");
+        startStudentLoading("Loading group...");
         google.script.run
           .withSuccessHandler((r) => {
             busy("vb", false, "Verify & Load Group");
+            stopStudentLoading("Group loaded");
             if (!r.success) {
               msg("vmsg", "bad", r.message);
               el("ef").classList.add("hide");
@@ -753,23 +794,15 @@
             }
             el("verifyBox").classList.add("hide");
             el("ef").classList.remove("hide");
-            el("who").textContent =
-              st.evaluator.name + " (" + st.evaluator.studentId + ")";
-            el("ctx").textContent = [
-              st.evaluator.activityKey,
-              st.evaluator.classId,
-              st.evaluator.groupKey
-            ].join(" / ");
-            el("prog").textContent =
-              (r.completedCount || 0) +
-              " of " +
-              (r.totalTargets || 0) +
-              " completed";
+            el("who").textContent = st.evaluator.name + " (" + st.evaluator.studentId + ")";
+            el("ctx").textContent = [st.evaluator.activityKey, st.evaluator.classId, st.evaluator.groupKey].join(" / ");
+            el("prog").textContent = (r.completedCount || 0) + " of " + (r.totalTargets || 0) + " completed";
             fillTargets();
             renderRatings();
           })
           .withFailureHandler((e) => {
             busy("vb", false, "Verify & Load Group");
+            failStudentLoading("Group loading failed");
             msg("vmsg", "bad", e.message || String(e));
           })
           .verifyAndLoadGroup(el("es").value, el("ea").value, el("ec").value);
@@ -778,10 +811,10 @@
       function fillTargets() {
         el("target").innerHTML = "";
         st.targets.forEach((m) => {
-          const o = document.createElement("option");
-          o.value = m.studentId;
-          o.textContent = m.name + " (" + m.studentId + ")";
-          el("target").appendChild(o);
+          const option = document.createElement("option");
+          option.value = m.studentId;
+          option.textContent = m.name + " (" + m.studentId + ")";
+          el("target").appendChild(option);
         });
         showMember();
         reset();
@@ -795,59 +828,45 @@
         }
         el("mn").textContent = m.name;
         el("mr").textContent = m.role || "Not specified";
-        el("mc").textContent =
-          m.contribution || "No contribution details provided.";
+        el("mc").textContent = m.contribution || "No contribution details provided.";
         el("mcard").classList.remove("hide");
       }
 
       function renderRatings() {
         el("ratings").innerHTML = "";
         st.rubric.forEach((c) => {
-          const w = document.createElement("div");
-          w.className = "crit";
-          w.innerHTML =
-            "<label>" +
-            esc(c.label) +
-            ' <span class="hint">Max ' +
-            c.maxScore +
-            " | Weight " +
-            c.weight +
-            "</span></label>";
+          const wrap = document.createElement("div");
+          wrap.className = "crit";
+          wrap.innerHTML = "<label>" + esc(c.label) + ' <span class="hint">Max ' + c.maxScore + " | Weight " + c.weight + "</span></label>";
           const row = document.createElement("div");
           row.className = "stars";
           row.setAttribute("role", "radiogroup");
           row.setAttribute("aria-label", c.label);
           for (let i = 1; i <= c.maxScore; i++) {
-            const b = document.createElement("button");
-            b.type = "button";
-            b.className = "star";
-            b.textContent = "\u2605";
-            b.setAttribute("role", "radio");
-            b.setAttribute(
-              "aria-label",
-              "Rate " + c.label + " " + i + " out of " + c.maxScore
-            );
-            b.onkeydown = (e) => keyRate(e, c, i);
-            b.onclick = () => rate(c.criterionId, i);
-            row.appendChild(b);
+            const star = document.createElement("button");
+            star.type = "button";
+            star.className = "star";
+            star.textContent = "\u2605";
+            star.setAttribute("role", "radio");
+            star.setAttribute("aria-label", "Rate " + c.label + " " + i + " out of " + c.maxScore);
+            star.onkeydown = (e) => keyRate(e, c, i);
+            star.onclick = () => rate(c.criterionId, i);
+            row.appendChild(star);
           }
-          const t = document.createElement("span");
-          t.className = "score";
-          t.dataset.score = c.criterionId;
-          t.textContent = "Not rated";
-          row.appendChild(t);
-          w.appendChild(row);
-          el("ratings").appendChild(w);
+          const text = document.createElement("span");
+          text.className = "score";
+          text.dataset.score = c.criterionId;
+          text.textContent = "Not rated";
+          row.appendChild(text);
+          wrap.appendChild(row);
+          el("ratings").appendChild(wrap);
         });
       }
 
       function keyRate(e, c, i) {
         if (e.key === "ArrowRight" || e.key === "ArrowUp") {
           e.preventDefault();
-          rate(
-            c.criterionId,
-            Math.min(c.maxScore, (st.scores[c.criterionId] || i) + 1)
-          );
+          rate(c.criterionId, Math.min(c.maxScore, (st.scores[c.criterionId] || i) + 1));
         }
         if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
           e.preventDefault();
@@ -858,29 +877,23 @@
       function rate(id, v) {
         st.scores[id] = v;
         const idx = st.rubric.findIndex((c) => c.criterionId === id);
-        const row = el("ratings").children[idx].querySelectorAll(".star");
-        row.forEach((s, i) => {
+        const stars = el("ratings").children[idx].querySelectorAll(".star");
+        stars.forEach((s, i) => {
           s.classList.toggle("on", i < v);
           s.setAttribute("aria-checked", i === v - 1 ? "true" : "false");
         });
-        document.querySelector(`[data-score='${id}']`).textContent =
-          v + " / " + st.rubric[idx].maxScore;
+        document.querySelector(`[data-score='${id}']`).textContent = v + " / " + st.rubric[idx].maxScore;
       }
 
       function reset() {
         st.scores = {};
-        document
-          .querySelectorAll(".star")
-          .forEach((s) => s.classList.remove("on"));
-        document
-          .querySelectorAll(".score")
-          .forEach((s) => (s.textContent = "Not rated"));
+        document.querySelectorAll(".star").forEach((s) => s.classList.remove("on"));
+        document.querySelectorAll(".score").forEach((s) => (s.textContent = "Not rated"));
       }
 
       function submitEval() {
         for (const c of st.rubric) {
-          if (c.required && !st.scores[c.criterionId])
-            return msg("emsg", "bad", "Please rate " + c.label + ".");
+          if (c.required && !st.scores[c.criterionId]) return msg("emsg", "bad", "Please rate " + c.label + ".");
         }
         const d = {
           activityKey: st.evaluator.activityKey,
@@ -891,9 +904,11 @@
           comments: el("comments").value
         };
         busy("eb", true, "Saving...");
+        startStudentLoading("Saving evaluation...");
         google.script.run
           .withSuccessHandler((r) => {
             busy("eb", false, "Submit Evaluation");
+            stopStudentLoading("Evaluation saved");
             msg("emsg", r.success ? "ok" : "bad", r.message);
             if (r.success) {
               st.targets = r.remainingTargets || [];
@@ -902,26 +917,22 @@
                 el("ef").classList.add("hide");
                 el("verifyBox").classList.remove("hide");
                 msg("vmsg", "ok", "All teammates have been evaluated.");
-              } else fillTargets();
-              el("prog").textContent =
-                (r.completedCount || 0) +
-                " of " +
-                (r.totalTargets || 0) +
-                " completed";
+              } else {
+                fillTargets();
+              }
+              el("prog").textContent = (r.completedCount || 0) + " of " + (r.totalTargets || 0) + " completed";
             }
           })
           .withFailureHandler((e) => {
             busy("eb", false, "Submit Evaluation");
+            failStudentLoading("Evaluation save failed");
             msg("emsg", "bad", e.message || String(e));
           })
           .saveEvaluation(d);
       }
 
       function esc(s) {
-        return String(s || "").replace(
-          /[&<>]/g,
-          (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[m]
-        );
+        return String(s || "").replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[m]);
       }
     </script>
   </body>
