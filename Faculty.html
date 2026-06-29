@@ -3,6 +3,7 @@
   <head>
     <base target="_top" />
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Faculty Dashboard</title>
     <style>
       :root {
@@ -18,9 +19,22 @@
         --danger: #b91c1c;
       }
 
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html {
+        max-width: 100%;
+        overflow-x: hidden;
+      }
+
       body {
+        max-width: 100%;
         margin: 0;
         padding: 20px;
+        overflow-x: hidden;
         color: var(--text);
         background: var(--bg);
         font-family: Arial, sans-serif;
@@ -31,17 +45,20 @@
       }
 
       .box {
-        max-width: 1120px;
+        width: min(1120px, 100%);
         margin: auto;
         padding: 22px;
+        overflow: hidden;
         background: var(--panel);
         border-radius: 8px;
         box-shadow: 0 8px 20px #0001;
       }
 
       .panel {
+        min-width: 0;
         margin: 12px 0;
         padding: 14px;
+        overflow: hidden;
         background: #fafafa;
         border: 1px solid #ddd;
         border-radius: 8px;
@@ -51,10 +68,23 @@
         display: none !important;
       }
 
-      .nav {
+      h1,
+      h2,
+      p,
+      .msg,
+      .card {
+        overflow-wrap: anywhere;
+      }
+
+      .nav,
+      .toolbar {
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
+        align-items: center;
+      }
+
+      .nav {
         margin-bottom: 12px;
       }
 
@@ -71,6 +101,7 @@
       }
 
       .card {
+        min-width: 0;
         min-height: 48px;
         padding: 10px;
         background: #eef2ff;
@@ -84,14 +115,15 @@
       }
 
       p {
+        min-width: 0;
         margin: 0 0 10px;
       }
 
       input,
       select,
       textarea {
-        box-sizing: border-box;
         width: 100%;
+        min-width: 0;
         padding: 9px;
         color: var(--text);
         background: #fff;
@@ -113,8 +145,10 @@
       }
 
       button {
+        max-width: 100%;
         margin: 3px;
         padding: 9px 12px;
+        white-space: normal;
         color: white;
         background: var(--primary);
         border: 0;
@@ -205,13 +239,6 @@
         color: var(--muted);
       }
 
-      .toolbar {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        align-items: center;
-      }
-
       .report-title {
         margin: 0 0 6px;
       }
@@ -236,17 +263,49 @@
         page-break-inside: avoid;
       }
 
+      .scroll {
+        width: 100%;
+        max-width: 100%;
+        margin: 10px 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .scroll:focus {
+        outline: 2px solid #93c5fd;
+        outline-offset: 2px;
+      }
+
       table {
         width: 100%;
-        margin: 10px 0;
         border-collapse: collapse;
+      }
+
+      .scroll > table {
+        width: max-content;
+        min-width: 100%;
+        margin: 0;
+      }
+
+      .data-table {
+        min-width: 720px;
+      }
+
+      .rubric {
+        min-width: 760px;
       }
 
       th,
       td {
+        min-width: 110px;
         padding: 7px;
         text-align: left;
+        vertical-align: top;
         border: 1px solid #ddd;
+        overflow-wrap: anywhere;
       }
 
       th {
@@ -254,8 +313,16 @@
         background: #1e293b;
       }
 
-      .scroll {
-        overflow-x: auto;
+      .rubric th,
+      .rubric td {
+        min-width: 96px;
+      }
+
+      .rubric th:nth-child(2),
+      .rubric td:nth-child(2),
+      .data-table th:last-child,
+      .data-table td:last-child {
+        min-width: 180px;
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -284,6 +351,7 @@
           background: #fff !important;
           font-size: 9pt;
           line-height: 1.2;
+          overflow: visible !important;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
@@ -301,6 +369,7 @@
           position: absolute;
           inset: 0 auto auto 0;
           width: 100% !important;
+          max-width: none !important;
           margin: 0 !important;
           padding: 0 !important;
           overflow: visible !important;
@@ -312,9 +381,11 @@
 
         .box,
         .panel {
+          width: 100% !important;
           max-width: none !important;
           margin: 0 !important;
           padding: 0 !important;
+          overflow: visible !important;
           background: #fff !important;
           border: 0 !important;
           border-radius: 0 !important;
@@ -406,6 +477,20 @@
           page-break-inside: auto;
         }
 
+        #out .scroll {
+          margin: 0 !important;
+          overflow: visible !important;
+          border: 0 !important;
+          border-radius: 0 !important;
+        }
+
+        #out .scroll > table,
+        #out .data-table,
+        #out .report-table {
+          width: 100% !important;
+          min-width: 0 !important;
+        }
+
         #out table {
           width: 100% !important;
           table-layout: fixed !important;
@@ -434,6 +519,7 @@
 
         #out th,
         #out td {
+          min-width: 0 !important;
           padding: 1mm 1.2mm !important;
           color: #111827 !important;
           border: 0.2mm solid #cbd5e1 !important;
@@ -479,20 +565,69 @@
       }
 
       @media (max-width: 850px) {
+        body {
+          padding: 14px;
+        }
+
+        .box {
+          padding: 18px;
+        }
+
         .grid,
         .cards {
           grid-template-columns: 1fr 1fr;
         }
 
-        .rubric {
-          min-width: 760px;
+        .data-table {
+          min-width: 680px;
         }
       }
 
       @media (max-width: 560px) {
+        body {
+          padding: 10px;
+        }
+
+        .box,
+        .panel {
+          padding: 12px;
+          border-radius: 8px;
+        }
+
+        h1 {
+          font-size: 1.65rem;
+          line-height: 1.12;
+        }
+
+        h2 {
+          font-size: 1.25rem;
+        }
+
         .grid,
         .cards {
           grid-template-columns: 1fr;
+        }
+
+        .nav button,
+        .toolbar button {
+          flex: 1 1 100%;
+          margin-right: 0;
+          margin-left: 0;
+        }
+
+        .loading-head {
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        th,
+        td {
+          min-width: 105px;
+          padding: 8px;
+        }
+
+        .data-table {
+          min-width: 640px;
         }
       }
     </style>
@@ -502,12 +637,25 @@
     <div class="box" aria-busy="false">
       <h1>Faculty Dashboard</h1>
 
-      <div id="facultyLoading" class="loading-panel hide" role="status" aria-live="polite" aria-hidden="true">
+      <div
+        id="facultyLoading"
+        class="loading-panel hide"
+        role="status"
+        aria-live="polite"
+        aria-hidden="true"
+      >
         <div class="loading-head">
           <span id="facultyLoadingText">Processing...</span>
           <span id="facultyLoadingPercent">0%</span>
         </div>
-        <div class="loading-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Faculty process progress">
+        <div
+          class="loading-track"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+          aria-label="Faculty process progress"
+        >
           <div id="facultyLoadingFill" class="loading-fill"></div>
         </div>
       </div>
@@ -540,7 +688,9 @@
 
         <section id="act" class="panel hide">
           <h2>Activity Settings</h2>
-          <p class="muted">Group is optional. Blank group settings apply to all groups in the selected activity and class.</p>
+          <p class="muted">
+            Group is optional. Blank group settings apply to all groups in the selected activity and class.
+          </p>
           <div class="grid">
             <p><label for="aa">Activity</label><input id="aa" list="activityOptions" oninput="applyExistingActivity()" /></p>
             <p><label for="an">Name</label><input id="an" /></p>
@@ -570,9 +720,13 @@
           <button type="button" class="light" onclick="normalizeWeights()">Normalize to 100</button>
           <button type="button" onclick="saveRubric()">Save Rubric</button>
           <div id="rbwarn" class="msg warn hide"></div>
-          <div class="scroll">
+          <div class="scroll" tabindex="0" aria-label="Rubric editor table">
             <table class="rubric">
-              <thead><tr><th>ID</th><th>Label</th><th>Max</th><th>Weight</th><th>Required</th><th>Status</th><th>Action</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>ID</th><th>Label</th><th>Max</th><th>Weight</th><th>Required</th><th>Status</th><th>Action</th>
+                </tr>
+              </thead>
               <tbody id="rbRows"></tbody>
             </table>
           </div>
@@ -597,7 +751,9 @@
 
         <section id="dup" class="panel hide">
           <h2>Duplicate Cleanup</h2>
-          <p class="muted">Duplicate registrations keep the first active row and deactivate extras. Duplicate evaluations keep the first submission and remove extras.</p>
+          <p class="muted">
+            Duplicate registrations keep the first active row and deactivate extras. Duplicate evaluations keep the first submission and remove extras.
+          </p>
           <div class="toolbar">
             <button type="button" onclick="cleanupRegs()">Deactivate Duplicate Registrations</button>
             <button type="button" class="danger" onclick="cleanupEvals()">Remove Duplicate Evaluations</button>
@@ -637,7 +793,7 @@
       }
 
       function esc(s) {
-        return String(s == null ? "" : s).replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[m]);
+        return String(s == null ? "" : s).replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[m]);
       }
 
       function norm(s) {
@@ -1012,7 +1168,10 @@
         if (!ak || !ci) return msg("rbmsg", "bad", "Enter Activity and Class first.");
         const rows = (st.state.rubrics || []).filter((x) => norm(x.activityKey) === ak && norm(x.classId) === ci);
         q("rbRows").innerHTML = "";
-        (rows.length ? rows : DEF.map((x) => ({ criterionId: x[0], label: x[1], maxScore: x[2], weight: x[3], required: x[4], status: "Active" }))).forEach((x) => addRow({ id: x.criterionId || x.id, label: x.label, maxScore: x.maxScore, weight: x.weight, required: x.required, status: x.status }));
+        (rows.length
+          ? rows
+          : DEF.map((x) => ({ criterionId: x[0], label: x[1], maxScore: x[2], weight: x[3], required: x[4], status: "Active" }))
+        ).forEach((x) => addRow({ id: x.criterionId || x.id, label: x.label, maxScore: x.maxScore, weight: x.weight, required: x.required, status: x.status }));
         msg("rbmsg", "ok", rows.length ? "Existing rubric loaded." : "No existing rubric found. Default loaded.");
       }
 
@@ -1210,7 +1369,9 @@
           key +
           '"><h2>' +
           esc(title) +
-          '</h2><table class="report-table report-table-' +
+          '</h2><div class="scroll" tabindex="0" aria-label="' +
+          esc(title) +
+          ' table"><table class="data-table report-table report-table-' +
           key +
           '"><thead><tr>' +
           heads.map((x) => "<th>" + esc(x) + "</th>").join("") +
@@ -1220,7 +1381,7 @@
           (rows.length
             ? rows.map((r) => "<tr>" + r.map((c) => "<td>" + esc(c == null ? "" : c) + "</td>").join("") + "</tr>").join("")
             : '<tr><td colspan="' + heads.length + '">No rows</td></tr>') +
-          "</tbody></table></section>"
+          "</tbody></table></div></section>"
         );
       }
     </script>
