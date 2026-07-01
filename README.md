@@ -13,6 +13,5 @@ Workflow changes:
 Copy these files into Apps Script:
 
 - Code.gs
-- zz_AuthFlow.gs
 - Index.html
 - Faculty.html
