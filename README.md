@@ -10,7 +10,7 @@ Workflow changes:
 - Blank group means all groups.
 - Saving an activity opens the rubric editor with the current or default rubric.
 
-Files:
+Copy these files into Apps Script:
 
 - Code.gs
 - zz_AuthFlow.gs
