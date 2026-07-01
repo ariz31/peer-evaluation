@@ -19,9 +19,22 @@ function getStudentHintsV2() {
   const a = activities_().filter((x) => x.status === "Active");
   return good_("Hints loaded.", {
     activities: uniq_(a.map((x) => x.activityKey)),
-    classes: uniq_(a.map((x) => x.classId)),
+    classes: uniq_(a.map((x) => x.classId).filter((x) => x !== CONFIG.ALL)),
     cohorts: uniqCohorts_(a)
   });
+}
+
+function saveActivitySettingsAllClass(d, pin) {
+  d = d || {};
+  d.classId = optionalCode_(d.classId || d.classCode) || CONFIG.ALL;
+  d.groupKey = optionalCode_(d.groupKey) || CONFIG.ALL;
+  return saveActivitySettings(d, pin);
+}
+
+function saveRubricAllClass(d, pin) {
+  d = d || {};
+  d.classId = optionalCode_(d.classId || d.classCode) || CONFIG.ALL;
+  return saveRubric(d, pin);
 }
 
 function saveStudentProfile(f) {
@@ -89,7 +102,7 @@ function loginStudentV2(d) {
     const regWindow = windowCheck_(activity, "reg");
     if (!regWindow.success) return regWindow;
 
-    ensureRubric_(activityKey, classId);
+    ensureRubric_(activityKey, activity.classId || classId);
     const me = upsertStudentActivityRegistration_({
       activityKey,
       classId,
@@ -148,7 +161,8 @@ function saveEvaluationV2(d) {
     let weighted = 0;
     let totalWeight = 0;
     const detail = [];
-    for (const c of rubric_(activityKey, classId)) {
+    const activeRubric = rubricForActivityClass_(activityKey, classId);
+    for (const c of activeRubric) {
       const v = Number(scores[c.criterionId]);
       if (c.required && (!Number.isInteger(v) || v < 1 || v > c.maxScore)) return bad_("Please rate " + c.label + " from 1 to " + c.maxScore + ".");
       if (Number.isInteger(v)) {
@@ -187,13 +201,13 @@ function saveEvaluationV2(d) {
 }
 
 function requireFacultyActivity_(activityKey, classId, requestedGroupKey) {
-  const matches = activities_().filter((x) => x.activityKey === activityKey && x.classId === classId);
-  if (!matches.length) return bad_("Activity Key was not found for this Class Code. Ask the faculty to create it first.");
-  let activity = null;
-  if (requestedGroupKey) activity = matches.find((x) => x.groupKey === requestedGroupKey) || null;
-  if (!activity) activity = matches.find((x) => x.groupKey === CONFIG.ALL) || null;
-  if (!activity && matches.length === 1) activity = matches[0];
-  if (!activity) return bad_("This Activity Key has multiple groups. Ask the faculty to create an ALL activity or move you to the correct group.");
+  const rows = activities_().filter((x) => x.activityKey === activityKey && (x.classId === classId || x.classId === CONFIG.ALL));
+  if (!rows.length) return bad_("Activity Key was not found for this Class Code. Ask the faculty to create it first.");
+  const groupKey = requestedGroupKey || CONFIG.ALL;
+  const exact = rows.find((x) => x.classId === classId && x.groupKey === groupKey) || rows.find((x) => x.classId === classId && x.groupKey === CONFIG.ALL);
+  const allClass = rows.find((x) => x.classId === CONFIG.ALL && x.groupKey === groupKey) || rows.find((x) => x.classId === CONFIG.ALL && x.groupKey === CONFIG.ALL);
+  const activity = exact || allClass || (rows.length === 1 ? rows[0] : null);
+  if (!activity) return bad_("This Activity Key has multiple group settings. Ask the faculty to create an ALL group setting or move you to the correct group.");
   if (activity.status !== "Active") return bad_("This activity is currently inactive.");
   return good_("Activity found.", { activity });
 }
@@ -238,11 +252,16 @@ function loadStudentEvaluationSession_(me, passkey, message) {
     activity: found.activity,
     targets,
     remainingTargets,
-    rubric: rubric_(me.activityKey, me.classId),
+    rubric: rubricForActivityClass_(me.activityKey, me.classId),
     completedCount: targets.length - remainingTargets.length,
     totalTargets: targets.length,
     passkey
   });
+}
+
+function rubricForActivityClass_(activityKey, classId) {
+  const exact = rubric_(activityKey, classId);
+  return exact.length ? exact : rubric_(activityKey, CONFIG.ALL);
 }
 
 function verifyStudentProfile_(studentId, passkey) {
